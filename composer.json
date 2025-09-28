@@ -1,18 +1,18 @@
 {
-    "name": ":vendor_slug/:package_slug",
-    "description": ":package_description",
+    "name": "moe-mizrak/laravel-log-reader",
+    "description": "Lightweight Laravel package for reading, searching, and filtering logs from both file and database sources.",
     "keywords": [
-        ":vendor_name",
+        "Moe Mizrak",
         "laravel",
-        ":package_slug",
+        "laravel-log-reader",
         "php 8"
     ],
     "type": "package",
-    "homepage": "https://github.com/:vendor_slug/:package_slug",
+    "homepage": "https://github.com/moe-mizrak/laravel-log-reader",
     "license": "MIT",
     "authors": [
         {
-            "name": ":author_name"
+            "name": "Moe Mizrak"
         }
     ],
     "require": {
@@ -26,18 +26,18 @@
     },
     "autoload": {
         "psr-4": {
-          "VendorName\\Skeleton\\": "src/"
+          "MoeMizrak\\LaravelLogReader\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-          "VendorName\\Skeleton\\Tests\\": "tests/"
+          "MoeMizrak\\LaravelLogReader\\Tests\\": "tests/"
         }
     },
     "extra": {
         "laravel": {
           "providers": [
-            "VendorName\\Skeleton\\SkeletonServiceProvider"
+            "MoeMizrak\\LaravelLogReader\\LaravelLogReaderServiceProvider"
           ]
         }
     },

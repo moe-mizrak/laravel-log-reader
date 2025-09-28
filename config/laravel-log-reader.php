@@ -2,5 +2,5 @@
 
 declare(strict_types=1);
 
-// config for VendorName/Skeleton
+// config for MoeMizrak/LaravelLogReader
 return [];
