@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace VendorName\Skeleton;
+namespace MoeMizrak\LaravelLogReader;
 
 use Illuminate\Support\ServiceProvider;
 
-final class SkeletonServiceProvider extends ServiceProvider
+final class LaravelLogReaderServiceProvider extends ServiceProvider
 {
     /**
      * Bootstrap any application services.
@@ -29,7 +29,7 @@ final class SkeletonServiceProvider extends ServiceProvider
      */
     public function provides(): array
     {
-        return ['skeleton'];
+        return ['laravel-log-reader'];
     }
 
     /**
@@ -38,7 +38,7 @@ final class SkeletonServiceProvider extends ServiceProvider
     protected function configure(): void
     {
         $this->mergeConfigFrom(
-            __DIR__ . '/../config/skeleton.php', 'skeleton'
+            __DIR__ . '/../config/laravel-log-reader.php', 'laravel-log-reader'
         );
     }
 
@@ -49,8 +49,8 @@ final class SkeletonServiceProvider extends ServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->publishes([
-                __DIR__ . '/../config/skeleton.php' => config_path('skeleton.php'),
-            ], 'skeleton');
+                __DIR__ . '/../config/laravel-log-reader.php' => config_path('laravel-log-reader.php'),
+            ], 'laravel-log-reader');
         }
     }
 }
