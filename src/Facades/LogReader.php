@@ -7,15 +7,16 @@ namespace MoeMizrak\LaravelLogReader\Facades;
 use Illuminate\Support\Facades\Facade;
 
 /**
- * @see \MoeMizrak\LaravelLogReader\LaravelLogReader
+ * @method static array search(string $query)
+ * @method static array filter(array $filters = [])
  */
-final class LaravelLogReader extends Facade
+final class LogReader extends Facade
 {
     /**
      * Get the registered name of the component.
      */
     protected static function getFacadeAccessor(): string
     {
-        return \MoeMizrak\LaravelLogReader\LaravelLogReader::class;
+        return 'log-reader';
     }
 }
