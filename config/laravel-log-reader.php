@@ -32,6 +32,7 @@ return [
         'table' => env('LOG_DB_TABLE_NAME', 'logs'),
         'connection' => env('LOG_DB_CONNECTION'),
 
+        // todo: maybe add user_id, requiest_id and ip_address columns here too, which are common in many logging setups for database. For now extra column can be used for that info if needed.
         // Column mapping: maps DB columns to LogData properties
         'columns' => [
             LogTableColumnType::ID->value => 'id',
@@ -40,7 +41,7 @@ return [
             LogTableColumnType::TIMESTAMP->value => 'created_at', // time of the log entry (e.g. 'created_at' or 'logged_at')
             LogTableColumnType::CHANNEL->value => 'channel', // e.g. 'production', 'local'
             LogTableColumnType::CONTEXT->value => 'context', // additional context info, often JSON e.g. '{"action":"UserLogin"}'
-            LogTableColumnType::EXTRA->value => 'extra', // any extra data, often JSON e.g. '{"ip":172.0.0.1, "session_id":"abc", user_id:123}'
+            LogTableColumnType::EXTRA->value => 'extra', // any extra data, often JSON e.g. '{"ip":172.0.0.1, "session_id":"abc", "user_id":123}'
         ],
 
         // Columns that should be searchable in DB queries
