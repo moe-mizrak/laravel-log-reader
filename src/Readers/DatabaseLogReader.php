@@ -8,6 +8,8 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use MoeMizrak\LaravelLogReader\Data\LogData;
+use MoeMizrak\LaravelLogReader\Enums\FilterKeyType;
+use MoeMizrak\LaravelLogReader\Enums\LogTableColumnType;
 
 /**
  * DatabaseLogReader reads logs from a database table, implementing search and filter functionalities.
@@ -23,7 +25,7 @@ final readonly class DatabaseLogReader implements LogReaderInterface
         protected ?string $connection = null
     ) {
         $this->columns = config('laravel-log-reader.db.columns', []);
-        $this->searchableColumns = config('laravel-log-reader.db.searchable_columns', ['message', 'context']);
+        $this->searchableColumns = config('laravel-log-reader.db.searchable_columns', []);
     }
 
     public function search(string $query): array
@@ -46,7 +48,7 @@ final readonly class DatabaseLogReader implements LogReaderInterface
                     }
                 }
             })
-            ->orderByDesc($this->getColumn('timestamp'))
+            ->orderByDesc($this->getColumn(LogTableColumnType::TIMESTAMP->value))
             ->get();
 
         return $this->convertToLogData($results->all());
@@ -58,24 +60,24 @@ final readonly class DatabaseLogReader implements LogReaderInterface
 
         if (empty($filters)) {
             return $this->convertToLogData(
-                $builder->orderByDesc($this->getColumn('timestamp'))->get()->all()
+                $builder->orderByDesc($this->getColumn(LogTableColumnType::TIMESTAMP->value))->get()->all()
             );
         }
 
         foreach ($filters as $key => $value) {
             // Apply specific filters based on known keys
             match ($key) {
-                'level' => $builder->where($this->getColumn('levelName'), mb_strtoupper((string) $value)),
-                'date_from' => $builder->where($this->getColumn('timestamp'), '>=', $value),
-                'date_to' => $builder->where($this->getColumn('timestamp'), '<=', $value),
-                'channel' => $builder->where($this->getColumn('channel'), $value),
+                FilterKeyType::LEVEL->value => $builder->where($this->getColumn(LogTableColumnType::LEVEL->value), mb_strtoupper((string) $value)),
+                FilterKeyType::DATE_FROM->value => $builder->where($this->getColumn(LogTableColumnType::TIMESTAMP->value), '>=', $value),
+                FilterKeyType::DATE_TO->value => $builder->where($this->getColumn(LogTableColumnType::TIMESTAMP->value), '<=', $value),
+                FilterKeyType::CHANNEL->value => $builder->where($this->getColumn(LogTableColumnType::CHANNEL->value), $value),
                 default => $this->applyCustomFilter($builder, $key, $value),
             };
         }
 
         // Return results ordered by creation date descending
         return $this->convertToLogData(
-            $builder->orderByDesc($this->getColumn('timestamp'))->get()->all()
+            $builder->orderByDesc($this->getColumn(LogTableColumnType::TIMESTAMP->value))->get()->all()
         );
     }
 
@@ -111,12 +113,11 @@ final readonly class DatabaseLogReader implements LogReaderInterface
 
             return LogData::fromDatabase([
                 'id' => Arr::get($data, $this->getColumn('id')),
-                'level_name' => mb_strtoupper(Arr::get($data, $this->getColumn('levelName'), '')),
-                'level' => $this->getLevelCode(Arr::get($data, $this->getColumn('levelName'), '')),
-                'message' => Arr::get($data, $this->getColumn('message'), ''),
-                'timestamp' => Arr::get($data, $this->getColumn('timestamp'), now()),
-                'channel' => Arr::get($data, $this->getColumn('channel')),
-                'context' => Arr::get($data, $this->getColumn('context'), ''),
+                'level' => mb_strtoupper(Arr::get($data, $this->getColumn(LogTableColumnType::LEVEL->value), '')),
+                'message' => Arr::get($data, $this->getColumn(LogTableColumnType::MESSAGE->value), ''),
+                'timestamp' => Arr::get($data, $this->getColumn(LogTableColumnType::TIMESTAMP->value), now()),
+                'channel' => Arr::get($data, $this->getColumn(LogTableColumnType::CHANNEL->value)),
+                'context' => Arr::get($data, $this->getColumn(LogTableColumnType::CONTEXT->value), ''),
                 'extra' => $this->getExtraData($data),
             ]);
         }, $rows);
@@ -128,7 +129,7 @@ final readonly class DatabaseLogReader implements LogReaderInterface
      */
     protected function getExtraData(array $data): array
     {
-        $extraColumn = $this->getColumn('extra');
+        $extraColumn = $this->getColumn(LogTableColumnType::EXTRA->value);
 
         $extra = Arr::get($data, $extraColumn, []);
 
@@ -143,25 +144,6 @@ final readonly class DatabaseLogReader implements LogReaderInterface
         }
 
         return is_array($extra) ? $extra : [];
-    }
-
-    /**
-     * Gets the numerical Monolog log level value for a given level string.
-     */
-    protected function getLevelCode(string $level): int
-    {
-        // todo maybe make them enums
-        return match (mb_strtoupper($level)) {
-            'DEBUG' => 100,
-            'INFO' => 200,
-            'NOTICE' => 250,
-            'WARNING' => 300,
-            'ERROR' => 400,
-            'CRITICAL' => 500,
-            'ALERT' => 550,
-            'EMERGENCY' => 600,
-            default => 0,
-        };
     }
 
     protected function getColumn(string $key): string

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace MoeMizrak\LaravelLogReader\Tests\Readers;
 
+use MoeMizrak\LaravelLogReader\Enums\FilterKeyType;
 use MoeMizrak\LaravelLogReader\Enums\LogDriverType;
 use MoeMizrak\LaravelLogReader\Readers\FileLogReader;
 use MoeMizrak\LaravelLogReader\Readers\LogReaderInterface;
@@ -52,7 +53,7 @@ final class FileLogReaderTest extends TestCase
 
         /* ASSERT */
         $this->assertSame([], $reader->search('anything'));
-        $this->assertSame([], $reader->filter(['level' => 'info']));
+        $this->assertSame([], $reader->filter([FilterKeyType::LEVEL->value => 'info']));
     }
 
     #[Test]
@@ -83,13 +84,13 @@ final class FileLogReaderTest extends TestCase
 
         /* ASSERT */
         $this->assertCount(4, $logs);
-        $this->assertSame('WARNING', $logs[0]->levelName);
+        $this->assertSame('WARNING', $logs[0]->level);
         $this->assertSame('production', $logs[0]->channel);
         $this->assertStringContainsString('Queue job failed', $logs[0]->message);
-        $this->assertSame('DEBUG', $logs[1]->levelName);
-        $this->assertSame('ERROR', $logs[2]->levelName);
+        $this->assertSame('DEBUG', $logs[1]->level);
+        $this->assertSame('ERROR', $logs[2]->level);
         $this->assertNotEmpty($logs[2]->context);
-        $this->assertSame('INFO', $logs[3]->levelName);
+        $this->assertSame('INFO', $logs[3]->level);
     }
 
     #[Test]
@@ -115,7 +116,7 @@ final class FileLogReaderTest extends TestCase
 
         /* ASSERT */
         $this->assertCount(1, $byMessage);
-        $this->assertSame('ERROR', $byMessage[0]->levelName);
+        $this->assertSame('ERROR', $byMessage[0]->level);
         $this->assertCount(1, $byContext);
         $this->assertNotEmpty($byContext[0]->context);
     }
@@ -136,11 +137,11 @@ final class FileLogReaderTest extends TestCase
     public function it_filters_by_level(): void
     {
         /* EXECUTE */
-        $firstResult = $this->fileReader->filter(['level' => 'info']);
-        $secondResult = $this->fileReader->filter(['level' => 'debug']);
-        $thirdResult = $this->fileReader->filter(['level' => 'error']);
-        $fourthResult = $this->fileReader->filter(['level' => 'warning']);
-        $fifthResult = $this->fileReader->filter(['level' => 'INFO']);
+        $firstResult = $this->fileReader->filter([FilterKeyType::LEVEL->value => 'info']);
+        $secondResult = $this->fileReader->filter([FilterKeyType::LEVEL->value => 'debug']);
+        $thirdResult = $this->fileReader->filter([FilterKeyType::LEVEL->value => 'error']);
+        $fourthResult = $this->fileReader->filter([FilterKeyType::LEVEL->value => 'warning']);
+        $fifthResult = $this->fileReader->filter([FilterKeyType::LEVEL->value => 'INFO']);
 
         /* ASSERT */
         $this->assertCount(1, $firstResult);
@@ -154,9 +155,9 @@ final class FileLogReaderTest extends TestCase
     public function it_filters_by_channel(): void
     {
         /* EXECUTE */
-        $firstResult = $this->fileReader->filter(['channel' => 'local']);
-        $secondResult = $this->fileReader->filter(['channel' => 'LOCAL']);
-        $thirdResult = $this->fileReader->filter(['channel' => 'production']);
+        $firstResult = $this->fileReader->filter([FilterKeyType::CHANNEL->value => 'local']);
+        $secondResult = $this->fileReader->filter([FilterKeyType::CHANNEL->value => 'LOCAL']);
+        $thirdResult = $this->fileReader->filter([FilterKeyType::CHANNEL->value => 'production']);
 
         /* ASSERT */
         $this->assertCount(3, $firstResult);
@@ -168,11 +169,11 @@ final class FileLogReaderTest extends TestCase
     public function it_filters_by_date_range(): void
     {
         /* EXECUTE */
-        $firstResult = $this->fileReader->filter(['date_from' => '2025-09-28 12:05:00']);
-        $secondResult = $this->fileReader->filter(['date_to' => '2025-09-28 12:10:00']);
+        $firstResult = $this->fileReader->filter([FilterKeyType::DATE_FROM->value => '2025-09-28 12:05:00']);
+        $secondResult = $this->fileReader->filter([FilterKeyType::DATE_TO->value => '2025-09-28 12:10:00']);
         $thirdResult = $this->fileReader->filter([
-            'date_from' => '2025-09-28 12:05:00',
-            'date_to' => '2025-09-28 12:10:00',
+            FilterKeyType::DATE_FROM->value => '2025-09-28 12:05:00',
+            FilterKeyType::DATE_TO->value => '2025-09-28 12:10:00',
         ]);
 
         /* ASSERT */
@@ -186,14 +187,14 @@ final class FileLogReaderTest extends TestCase
     {
         /* EXECUTE */
         $results = $this->fileReader->filter([
-            'level' => 'error',
-            'channel' => 'local',
-            'date_from' => '2025-09-28 12:00:00',
+            FilterKeyType::LEVEL->value => 'error',
+            FilterKeyType::CHANNEL->value => 'local',
+            FilterKeyType::DATE_FROM->value => '2025-09-28 12:00:00',
         ]);
 
         /* ASSERT */
         $this->assertCount(1, $results);
-        $this->assertSame('ERROR', $results[0]->levelName);
+        $this->assertSame('ERROR', $results[0]->level);
     }
 
     #[Test]
@@ -247,6 +248,6 @@ LOGS;
      */
     private function findLogByLevel(array $logs, string $level): mixed
     {
-        return array_find($logs, fn($log) => $log->levelName === $level);
+        return array_find($logs, fn($log) => $log->level === $level);
     }
 }

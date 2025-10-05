@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use MoeMizrak\LaravelLogReader\Enums\LogDriverType;
+use MoeMizrak\LaravelLogReader\Enums\LogTableColumnType;
 
 return [
     /*
@@ -33,17 +34,20 @@ return [
 
         // Column mapping: maps DB columns to LogData properties
         'columns' => [
-            'id' => 'id',
-            'levelName' => 'level_name', // e.g. 'ERROR', 'INFO'
-            'level' => 'level', // e.g. 400, 200
-            'message' => 'message', // main log message
-            'timestamp' => 'created_at', // time of the log entry (e.g. 'created_at' or 'logged_at')
-            'channel' => 'channel', // e.g. 'production', 'local'
-            'context' => 'context', // additional context info, often JSON e.g. '{"user_id":123}'
-            'extra' => 'extra', // any extra data, often JSON e.g. '{"ip":172.0.0.1}'
+            LogTableColumnType::ID->value => 'id',
+            LogTableColumnType::LEVEL->value => 'level', // e.g. 'ERROR', 'INFO'
+            LogTableColumnType::MESSAGE->value => 'message', // main log message
+            LogTableColumnType::TIMESTAMP->value => 'created_at', // time of the log entry (e.g. 'created_at' or 'logged_at')
+            LogTableColumnType::CHANNEL->value => 'channel', // e.g. 'production', 'local'
+            LogTableColumnType::CONTEXT->value => 'context', // additional context info, often JSON e.g. '{"action":"UserLogin"}'
+            LogTableColumnType::EXTRA->value => 'extra', // any extra data, often JSON e.g. '{"ip":172.0.0.1, "session_id":"abc", user_id:123}'
         ],
 
         // Columns that should be searchable in DB queries
-        'searchable_columns' => ['message', 'context'],
+        'searchable_columns' => [
+            LogTableColumnType::MESSAGE->value,
+            LogTableColumnType::CONTEXT->value,
+            LogTableColumnType::EXTRA->value,
+        ],
     ],
 ];

@@ -7,6 +7,8 @@ namespace MoeMizrak\LaravelLogReader\Readers;
 use Carbon\Carbon;
 use DateTimeInterface;
 use MoeMizrak\LaravelLogReader\Data\LogData;
+use MoeMizrak\LaravelLogReader\Enums\FilterKeyType;
+use MoeMizrak\LaravelLogReader\Enums\LogTableColumnType;
 use Spatie\LaravelData\Optional;
 
 /**
@@ -59,10 +61,10 @@ final readonly class FileLogReader implements LogReaderInterface
     protected function matchesFilter(LogData $log, string $key, mixed $value): bool
     {
         return match ($key) {
-            'level' => mb_strtolower($log->levelName) === mb_strtolower((string) $value),
-            'date_from' => $this->toCarbon($log->timestamp) >= $this->toCarbon($value),
-            'date_to' => $this->toCarbon($log->timestamp) <= $this->toCarbon($value),
-            'channel' => ! ($log->channel instanceof Optional)
+            FilterKeyType::LEVEL->value => mb_strtolower($log->level) === mb_strtolower((string) $value),
+            FilterKeyType::DATE_FROM->value => $this->toCarbon($log->timestamp) >= $this->toCarbon($value),
+            FilterKeyType::DATE_TO->value => $this->toCarbon($log->timestamp) <= $this->toCarbon($value),
+            FilterKeyType::CHANNEL->value => ! ($log->channel instanceof Optional)
                 && mb_strtolower($log->channel) === mb_strtolower((string) $value),
             default => $this->matchesProperty($log, $key, $value),
         };
@@ -124,19 +126,19 @@ final readonly class FileLogReader implements LogReaderInterface
                  * [0] => Full matched line
                  * [1] => Timestamp (e.g. '2023-10-05 14:23:45')
                  * [2] => Channel (e.g. 'production')
-                 * [3] => Level (e.g. 'error', 'info')
+                 * [3] => Level Name (e.g. 'error', 'info')
                  * [4] => Message (e.g. 'An error occurred')
                  * [5] => Context (if any, may be empty)
                  */
                 $currentLog = [
-                    'timestamp' => $matches[1],
-                    'channel' => $matches[2],
-                    'level' => strtoupper($matches[3]),
-                    'message' => $matches[4],
-                    'context' => '',
+                    LogTableColumnType::TIMESTAMP->value => $matches[1],
+                    LogTableColumnType::CHANNEL->value => $matches[2],
+                    LogTableColumnType::LEVEL->value => strtoupper($matches[3]),
+                    LogTableColumnType::MESSAGE->value => $matches[4],
+                    LogTableColumnType::CONTEXT->value => '',
                 ];
             } elseif ($currentLog !== null && ! empty(trim($line))) {
-                $currentLog['context'] .= $line . PHP_EOL;
+                $currentLog[LogTableColumnType::CONTEXT->value] .= $line . PHP_EOL;
             }
         }
 
@@ -155,7 +157,7 @@ final readonly class FileLogReader implements LogReaderInterface
      */
     protected function finalizeLogEntry(array $log): array
     {
-        $log['context'] = rtrim($log['context']);
+        $log[LogTableColumnType::CONTEXT->value] = rtrim($log[LogTableColumnType::CONTEXT->value]);
 
         return $log;
     }

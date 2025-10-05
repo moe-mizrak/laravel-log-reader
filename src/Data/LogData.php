@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace MoeMizrak\LaravelLogReader\Data;
 
 use Carbon\Carbon;
+use Illuminate\Support\Arr;
+use MoeMizrak\LaravelLogReader\Enums\LogTableColumnType;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Optional;
 
@@ -15,8 +17,7 @@ final class LogData extends Data
 {
     public function __construct(
         public string|Optional $id,
-        public string $levelName,
-        public int|Optional $level,
+        public string $level,
         public string $message,
         public Carbon|string $timestamp,
         public string|Optional $channel,
@@ -32,14 +33,13 @@ final class LogData extends Data
         $row = (array) $row;
 
         return new self(
-            id: (string) $row['id'],
-            levelName: $row['level_name'],
-            level: $row['level'],
-            message: $row['message'],
-            timestamp: Carbon::parse($row['timestamp']),
-            channel: $row['extra']['channel'] ?? Optional::create(),
-            context: $row['context'] ?? [],
-            extra: $row['extra'] ?? []
+            id: (string) Arr::get($row, 'id'),
+            level: Arr::get($row, 'level'),
+            message: Arr::get($row, 'message'),
+            timestamp: Carbon::parse(Arr::get($row, 'timestamp')),
+            channel: Arr::get($row, 'channel') ?? Optional::create(),
+            context: Arr::get($row, 'context', []),
+            extra: Arr::get($row, 'extra', [])
         );
     }
 
@@ -50,12 +50,11 @@ final class LogData extends Data
     {
         return new self(
             id: Optional::create(), // no id in file logs
-            levelName: $log['level'], // level of the log e.g. 'error', 'info' etc.
-            level: Optional::create(), // no numeric level in file logs
-            message: $log['message'], // main log message
-            timestamp: Carbon::parse($log['timestamp']), // timestamp of the log entry
-            channel: $log['channel'] ?? Optional::create(), // channel may not exist in all log formats
-            context: $log['context'] ?? '',
+            level: Arr::get($log, LogTableColumnType::LEVEL->value), // level of the log e.g. 'error', 'info' etc.
+            message: Arr::get($log, LogTableColumnType::MESSAGE->value), // main log message
+            timestamp: Carbon::parse(Arr::get($log, LogTableColumnType::TIMESTAMP->value)), // timestamp of the log entry
+            channel: Arr::get($log, LogTableColumnType::CHANNEL->value) ?? Optional::create(), // channel may not exist in all log formats
+            context: Arr::get($log, LogTableColumnType::CONTEXT->value, ''),
             extra: Optional::create() // no extra in file logs
         );
     }
@@ -63,14 +62,13 @@ final class LogData extends Data
     public function toArray(): array
     {
         $data = [
-            'id' => $this->id instanceof Optional ? null : $this->id,
-            'levelName' => $this->levelName,
-            'level' => $this->level instanceof Optional ? null : $this->level,
-            'message' => $this->message,
-            'timestamp' => $this->timestamp instanceof Carbon ? $this->timestamp->toDateTimeString() : $this->timestamp,
-            'channel' => $this->channel instanceof Optional ? null : $this->channel,
-            'context' => $this->context instanceof Optional ? null : $this->context,
-            'extra' => $this->extra instanceof Optional ? null : $this->extra,
+            LogTableColumnType::ID->value => $this->id instanceof Optional ? null : $this->id,
+            LogTableColumnType::LEVEL->value => $this->level,
+            LogTableColumnType::MESSAGE->value => $this->message,
+            LogTableColumnType::TIMESTAMP->value => $this->timestamp instanceof Carbon ? $this->timestamp->toDateTimeString() : $this->timestamp,
+            LogTableColumnType::CHANNEL->value => $this->channel instanceof Optional ? null : $this->channel,
+            LogTableColumnType::CONTEXT->value => $this->context instanceof Optional ? null : $this->context,
+            LogTableColumnType::EXTRA->value => $this->extra instanceof Optional ? null : $this->extra,
         ];
 
         // Remove all null values
