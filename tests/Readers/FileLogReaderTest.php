@@ -241,7 +241,6 @@ final class FileLogReaderTest extends TestCase
         /* ASSERT */
         $nonChunkedMessages = array_map(fn($r) => $r->message, $nonChunked);
         $chunkedMessages = array_map(fn($r) => $r->message, $chunked);
-    
         $this->assertSame($nonChunkedMessages, $chunkedMessages);
     }
 
@@ -264,7 +263,7 @@ final class FileLogReaderTest extends TestCase
             );
         }
         file_put_contents($logFile, implode(PHP_EOL, $lines));
-        $reader = new \MoeMizrak\LaravelLogReader\Readers\FileLogReader($logFile);
+        $reader = new FileLogReader($logFile);
 
         /* EXECUTE */
         $results = $reader->search('Chunk test message', true);
