@@ -210,6 +210,74 @@ final class FileLogReaderTest extends TestCase
         $this->assertSame([], $result);
     }
 
+    #[Test]
+    public function it_searches_logs_using_chunking(): void
+    {
+        /* SETUP: force small chunk size so chunking happens */
+        config(['laravel-log-reader.file.chunk_size' => 64]);
+
+        /* EXECUTE: enable chunking */
+        $results = $this->fileReader->search('User authentication', true);
+
+        /* ASSERT */
+        $this->assertCount(1, $results);
+        $this->assertSame('INFO', $results[0]->level);
+        $this->assertStringContainsString('User authentication successful', $results[0]->message);
+    }
+
+    #[Test]
+    public function it_returns_same_results_with_and_without_chunking(): void
+    {
+        /* SETUP */
+        config(['laravel-log-reader.file.chunk_size' => 64]);
+    
+        /* EXECUTE */
+        $nonChunked = $this->fileReader->search('undefined method', false);
+        $chunked = $this->fileReader->search('undefined method', true);
+    
+        /* ASSERT */
+        $this->assertCount(count($nonChunked), $chunked);
+    
+        /* ASSERT */
+        $nonChunkedMessages = array_map(fn($r) => $r->message, $nonChunked);
+        $chunkedMessages = array_map(fn($r) => $r->message, $chunked);
+        $this->assertSame($nonChunkedMessages, $chunkedMessages);
+    }
+
+    #[Test]
+    public function it_reads_all_logs_correctly_when_chunking_with_unique_data(): void
+    {
+        /* SETUP */
+        config(['laravel-log-reader.file.chunk_size' => 64]);
+        $logFile = storage_path('logs/test_chunked.log');
+        if (! is_dir(dirname($logFile))) {
+            mkdir(dirname($logFile), 0777, true);
+        }
+        $total = 5;
+        $lines = [];
+        for ($i = 1; $i <= $total; $i++) {
+            $lines[] = sprintf(
+                "[%s] local.INFO: Chunk test message #%d",
+                now()->subSeconds($total - $i)->format('Y-m-d H:i:s'),
+                $i
+            );
+        }
+        file_put_contents($logFile, implode(PHP_EOL, $lines));
+        $reader = new FileLogReader($logFile);
+
+        /* EXECUTE */
+        $results = $reader->search('Chunk test message', true);
+
+        /* ASSERT */
+        $this->assertCount($total, $results, 'Expected all log entries to be returned');
+        $expectedMessages = [];
+        for ($i = 1; $i <= $total; $i++) {
+            $expectedMessages[] = "Chunk test message #{$i}";
+        }
+        $messages = array_map(fn($r) => $r->message, $results);
+        $this->assertSame($expectedMessages, $messages);
+    }
+
     /**
      * Creates a temporary log file with sample log entries for testing.
      */

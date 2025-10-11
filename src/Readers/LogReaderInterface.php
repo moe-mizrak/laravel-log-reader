@@ -12,7 +12,7 @@ interface LogReaderInterface
     /**
      * Search logs based on a query string.
      */
-    public function search(string $query): array;
+    public function search(string $query, bool $chunk = false): array;
 
     /**
      * Filter logs based on filter criteria.

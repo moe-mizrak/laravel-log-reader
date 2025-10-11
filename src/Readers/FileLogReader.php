@@ -21,23 +21,72 @@ final readonly class FileLogReader implements LogReaderInterface
 
     public function __construct(protected string $filePath) {}
 
-    public function search(string $query): array
+    public function search(string $query, bool $chunk = false): array
     {
         if (empty($query)) {
             return [];
         }
 
-        $logs = $this->parseLogFile();
         $searchTerm = mb_strtolower($query);
 
-        // Filter logs where the message or context contains the search term (case-insensitive)
+        if ($chunk) {
+            $chunkSize = (int) config('laravel-log-reader.file.chunk_size', 512 * 1024); // default 512KB
+            $handle = @fopen($this->filePath, 'r');
+
+            if (! $handle) {
+                return [];
+            }
+
+            $results = [];
+            $buffer = '';
+
+            // todo here we might add a logic that it prevents when data/size of results is too big while (!feof($handle) && $resultCount < $limit) {
+            while (! feof($handle)) {
+                $buffer .= fread($handle, $chunkSize);
+
+                if (! feof($handle)) {
+                    $lastNewLinePos = strrpos($buffer, PHP_EOL);
+
+                    if ($lastNewLinePos === false) {
+                        // no newline yet — read more before parsing
+                        continue;
+                    }
+
+                    $contentChunk = substr($buffer, 0, $lastNewLinePos);
+                    $buffer = substr($buffer, $lastNewLinePos + 1);
+                } else {
+                    $contentChunk = $buffer;
+                    $buffer = '';
+                }
+
+                // Parse and filter this chunk
+                $logs = $this->convertToLogData($this->extractLogsFromContent($contentChunk));
+
+                $filtered = array_filter(
+                    $logs,
+                    fn(LogData $log) => str_contains(mb_strtolower($log->message ?? ''), $searchTerm)
+                        || str_contains(mb_strtolower($log->context ?? ''), $searchTerm)
+                );
+
+                $results = array_merge($results, array_values($filtered));
+            }
+
+            fclose($handle);
+
+            return $results;
+        }
+
+        // Non-chunked (default)
+        $logs = $this->parseLogFile();
+
         return array_values(array_filter(
             $logs,
-            fn(LogData $log) => str_contains(mb_strtolower($log->message ?? ''), $searchTerm)
-                || str_contains(mb_strtolower($log->context ?? ''), $searchTerm)
+            fn(LogData $log) => str_contains(mb_strtolower($log->message ?? ''), $searchTerm) ||
+                str_contains(mb_strtolower($log->context ?? ''), $searchTerm)
         ));
     }
 
+    // todo add chunking/stream logic to filter method for both database filter method and here
     public function filter(array $filters = []): array
     {
         $logs = $this->parseLogFile();
