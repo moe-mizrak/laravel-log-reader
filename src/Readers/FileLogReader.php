@@ -46,12 +46,12 @@ final readonly class FileLogReader implements LogReaderInterface
 
                 if (! feof($handle)) {
                     $lastNewLinePos = strrpos($buffer, PHP_EOL);
-                
+
                     if ($lastNewLinePos === false) {
                         // no newline yet — read more before parsing
                         continue;
                     }
-                
+
                     $contentChunk = substr($buffer, 0, $lastNewLinePos);
                     $buffer = substr($buffer, $lastNewLinePos + 1);
                 } else {
