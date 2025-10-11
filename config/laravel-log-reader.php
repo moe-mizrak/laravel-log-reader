@@ -21,6 +21,7 @@ return [
     */
     'file' => [
         'path' => env('LOG_FILE_PATH', storage_path('logs/laravel.log')),
+        'chunk_size' => env('LOG_READER_FILE_CHUNK_SIZE', 512 * 1024), // 512KB for file reading
     ],
 
     /*
@@ -31,6 +32,7 @@ return [
     'db' => [
         'table' => env('LOG_DB_TABLE_NAME', 'logs'),
         'connection' => env('LOG_DB_CONNECTION'),
+        'chunk_size' => env('LOG_READER_DB_CHUNK_SIZE', 500), // number of records per chunk when chunking is enabled
 
         // todo: maybe add user_id, requiest_id and ip_address columns here too, which are common in many logging setups for database. For now extra column can be used for that info if needed.
         // Column mapping: maps DB columns to LogData properties

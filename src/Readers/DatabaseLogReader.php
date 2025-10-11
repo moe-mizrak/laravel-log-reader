@@ -28,30 +28,31 @@ final readonly class DatabaseLogReader implements LogReaderInterface
         $this->searchableColumns = config('laravel-log-reader.db.searchable_columns', []);
     }
 
-    public function search(string $query): array
+    // todo we need stream logic, maybe as parameter $stream maybe as new method as searchStream; which uses cursor/yield/stream, $builder->lazy($chunkSize) etc
+    public function search(string $query, bool $chunk = false): array
     {
         if (empty($query)) {
             return [];
         }
 
-        $results = $this->getQueryBuilder()
-            ->where(function (Builder $q) use ($query) {
-                $param = '%' . mb_strtolower($query) . '%';
+        $columns = array_map(fn($col) => $this->getColumn($col), $this->searchableColumns);
 
-                foreach ($this->searchableColumns as $index => $col) {
-                    $column = $this->getColumn($col);
+        $builder = $this->getQueryBuilder()
+            ->whereAny($columns, 'like', '%' . $query . '%')
+            ->orderByDesc($this->getColumn(LogTableColumnType::TIMESTAMP->value));
 
-                    if ($index === 0) {
-                        $q->whereRaw("LOWER({$column}) LIKE ?", [$param]);
-                    } else {
-                        $q->orWhereRaw("LOWER({$column}) LIKE ?", [$param]);
-                    }
-                }
-            })
-            ->orderByDesc($this->getColumn(LogTableColumnType::TIMESTAMP->value))
-            ->get();
+        if ($chunk) {
+            $chunkSize = (int) config('laravel-log-reader.db.chunk_size', 500);
+            $results = [];
 
-        return $this->convertToLogData($results->all());
+            $builder->chunk($chunkSize, function ($chunk) use (&$results) {
+                $results = array_merge($results, $chunk->all());
+            });
+
+            return $this->convertToLogData($results);
+        }
+
+        return $this->convertToLogData($builder->get()->all());
     }
 
     public function filter(array $filters = []): array
@@ -67,7 +68,7 @@ final readonly class DatabaseLogReader implements LogReaderInterface
         foreach ($filters as $key => $value) {
             // Apply specific filters based on known keys
             match ($key) {
-                FilterKeyType::LEVEL->value => $builder->where($this->getColumn(LogTableColumnType::LEVEL->value), mb_strtoupper((string) $value)),
+                FilterKeyType::LEVEL->value => $builder->where($this->getColumn(LogTableColumnType::LEVEL->value), mb_strtolower((string) $value)),
                 FilterKeyType::DATE_FROM->value => $builder->where($this->getColumn(LogTableColumnType::TIMESTAMP->value), '>=', $value),
                 FilterKeyType::DATE_TO->value => $builder->where($this->getColumn(LogTableColumnType::TIMESTAMP->value), '<=', $value),
                 FilterKeyType::CHANNEL->value => $builder->where($this->getColumn(LogTableColumnType::CHANNEL->value), $value),
@@ -92,10 +93,10 @@ final readonly class DatabaseLogReader implements LogReaderInterface
 
     protected function columnExists(string $column): bool
     {
-        return $this->getQueryBuilder()
-            ->getConnection()
-            ->getSchemaBuilder()
-            ->hasColumn($this->table, $column);
+        /** @var \Illuminate\Database\Connection $connection */
+        $connection = $this->getQueryBuilder()->getConnection();
+
+        return $connection->getSchemaBuilder()->hasColumn($this->table, $column);
     }
 
     protected function getQueryBuilder(): Builder
@@ -113,7 +114,7 @@ final readonly class DatabaseLogReader implements LogReaderInterface
 
             return LogData::fromDatabase([
                 'id' => Arr::get($data, $this->getColumn('id')),
-                'level' => mb_strtoupper(Arr::get($data, $this->getColumn(LogTableColumnType::LEVEL->value), '')),
+                'level' => mb_strtolower(Arr::get($data, $this->getColumn(LogTableColumnType::LEVEL->value), '')),
                 'message' => Arr::get($data, $this->getColumn(LogTableColumnType::MESSAGE->value), ''),
                 'timestamp' => Arr::get($data, $this->getColumn(LogTableColumnType::TIMESTAMP->value), now()),
                 'channel' => Arr::get($data, $this->getColumn(LogTableColumnType::CHANNEL->value)),

@@ -149,7 +149,7 @@ final class DatabaseLogReaderTest extends TestCase
         /* ASSERT */
         $this->assertCount(1, $results);
         $this->assertSame('Payment failed', $results[0]->message);
-        $this->assertSame('ERROR', $results[0]->level);
+        $this->assertSame('error', $results[0]->level);
     }
 
     #[Test]
@@ -231,7 +231,7 @@ final class DatabaseLogReaderTest extends TestCase
         /* ASSERT */
         $this->assertCount(1, $results);
         $this->assertSame('Payment failed', $results[0]->message);
-        $this->assertSame('ERROR', $results[0]->level);
+        $this->assertSame('error', $results[0]->level);
     }
 
     #[Test]
@@ -370,6 +370,69 @@ final class DatabaseLogReaderTest extends TestCase
         $this->assertCount(3, $results);
     }
 
+    #[Test]
+    public function it_searches_logs_using_chunking(): void
+    {
+        /* SETUP */
+        config(['laravel-log-reader.db.chunk_size' => 1]);
+
+        /* EXECUTE */
+        $results = $this->databaseLogReader->search(query: 'user_id', chunk: true);
+
+        /* ASSERT */
+        $this->assertCount(2, $results);
+        $this->assertSame('Payment failed', $results[0]->message);
+        $this->assertSame('User logged in', $results[1]->message);
+    }
+
+    #[Test]
+    public function it_returns_same_results_with_and_without_chunking(): void
+    {
+        /* SETUP */
+        config(['laravel-log-reader.db.chunk_size' => 1]);
+
+        /* EXECUTE */
+        $nonChunked = $this->databaseLogReader->search(query: 'user_id', chunk: false);
+        $chunked = $this->databaseLogReader->search(query: 'user_id', chunk: true);
+
+        /* ASSERT */
+        $this->assertCount(2, $nonChunked);
+        $this->assertCount(2, $chunked);
+        $nonChunkedMessages = array_map(fn($r) => $r->message, $nonChunked);
+        $chunkedMessages = array_map(fn($r) => $r->message, $chunked);
+        $this->assertSame($nonChunkedMessages, $chunkedMessages);
+    }
+
+    #[Test]
+    public function it_searches_logs_with_chunk_size_greater_than_one(): void
+    {
+        /* SETUP */
+        config(['laravel-log-reader.db.chunk_size' => 2]);
+        $count = 5;
+        for ($i = 1; $i <= $count; $i++) {
+            DB::table($this->table)->insert([
+                'level' => 'info',
+                'message' => "Info {$i}",
+                'channel' => 'bulk',
+                'context' => '{}',
+                'extra' => '{}',
+                'created_at' => now()->subSeconds($count - $i),
+            ]);
+        }
+
+        /* EXECUTE */
+        $results = $this->databaseLogReader->search('Info', true);
+
+        /* ASSERT */
+        $this->assertCount($count, $results);
+        $expected = [];
+        for ($i = $count; $i >= 1; $i--) {
+            $expected[] = "Info {$i}";
+        }
+        $messages = array_map(fn($r) => $r->message, $results);
+        $this->assertSame($expected, $messages);
+    }
+
     /**
      * Create the logs table for testing.
      */
@@ -393,7 +456,7 @@ final class DatabaseLogReaderTest extends TestCase
     {
         DB::table($this->table)->insert([
             [
-                'level' => 'INFO',
+                'level' => 'info',
                 'message' => 'User logged in',
                 'channel' => 'auth',
                 'context' => '{"action":"login"}',
@@ -401,7 +464,7 @@ final class DatabaseLogReaderTest extends TestCase
                 'created_at' => now()->subMinutes(10),
             ],
             [
-                'level' => 'ERROR',
+                'level' => 'error',
                 'message' => 'Payment failed',
                 'channel' => 'payment',
                 'context' => '{}',
@@ -409,7 +472,7 @@ final class DatabaseLogReaderTest extends TestCase
                 'created_at' => now()->subMinutes(5),
             ],
             [
-                'level' => 'DEBUG',
+                'level' => 'debug',
                 'message' => 'Cache cleared',
                 'channel' => 'system',
                 'context' => '{}',
