@@ -14,6 +14,13 @@ You can publish and run the migrations with:
   php artisan vendor:publish --tag="laravel-log-reader"
   ```
 
+## TODO
+> - [ ] Add streaming response, maybe as parameter to search/filter methods, maybe as a separate method e.g. searchStream ( which uses cursor/yield/stream, $builder->lazy($chunkSize) etc)
+> - [ ] Maybe first a cheap/free model will be used to summarize the large log files and then search/filter on that summary (might not be ideal)
+> - [ ] Modify LOG_PATTERN in FileLogReader, check ppssible patterns in real world cases so that LOG_PATTERN will cover them
+> - [ ] We might end up adding some limits to the file and db log reading (even though it might against what we are achieving here), where when a limit passes cetain size, it does not add anymore e.g. while (! feof($handle)) will be someting like while (!feof($handle) && $resultCount < $limit); also some logic can be added to db log reader for that.
+> - [ ] we might add user_id, requiest_id and ip_address columns to config and the logic, atm we use extra column for them. But those fields/columns could be added specifically. 
+
 ## Contributing
 
 > **Your contributions are welcome!** If you'd like to improve this project, simply create a pull request with your changes. Your efforts help enhance its functionality and documentation.

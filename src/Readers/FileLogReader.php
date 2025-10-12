@@ -16,7 +16,6 @@ use Spatie\LaravelData\Optional;
  */
 final readonly class FileLogReader implements LogReaderInterface
 {
-    // todo: maybe fist a cheap/free model will be used to summarize the large log files and then search/filter on that summary
     private const string LOG_PATTERN = '/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] (\w+)\.(\w+): (.+)/';
 
     public function __construct(protected string $filePath) {}
@@ -40,7 +39,6 @@ final readonly class FileLogReader implements LogReaderInterface
             $results = [];
             $buffer = '';
 
-            // todo here we might add a logic that it prevents when data/size of results is too big while (!feof($handle) && $resultCount < $limit) {
             while (! feof($handle)) {
                 $buffer .= fread($handle, $chunkSize);
 
