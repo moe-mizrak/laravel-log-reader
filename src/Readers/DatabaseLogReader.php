@@ -28,7 +28,6 @@ final readonly class DatabaseLogReader implements LogReaderInterface
         $this->searchableColumns = config('laravel-log-reader.db.searchable_columns', []);
     }
 
-    // todo we need stream logic, maybe as parameter $stream maybe as new method as searchStream; which uses cursor/yield/stream, $builder->lazy($chunkSize) etc
     public function search(string $query, bool $chunk = false): array
     {
         if (empty($query)) {
