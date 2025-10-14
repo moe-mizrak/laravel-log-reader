@@ -11,11 +11,15 @@ interface LogReaderInterface
 {
     /**
      * Search logs based on a query string.
+     * 
+     * @return array<LogData>
      */
     public function search(string $query, bool $chunk = false): array;
 
     /**
      * Filter logs based on filter criteria.
+     * 
+     * @return array<LogData>
      */
-    public function filter(array $filters = []): array;
+    public function filter(array $filters = [], bool $chunk = false): array;
 }

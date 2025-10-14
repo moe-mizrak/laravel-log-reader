@@ -28,6 +28,9 @@ final readonly class DatabaseLogReader implements LogReaderInterface
         $this->searchableColumns = config('laravel-log-reader.db.searchable_columns', []);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function search(string $query, bool $chunk = false): array
     {
         if (empty($query)) {
@@ -40,6 +43,39 @@ final readonly class DatabaseLogReader implements LogReaderInterface
             ->whereAny($columns, 'like', '%' . $query . '%')
             ->orderByDesc($this->getColumn(LogTableColumnType::TIMESTAMP->value));
 
+        return $this->executeQuery($builder, $chunk);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function filter(array $filters = [], bool $chunk = false): array
+    {
+        $builder = $this->getQueryBuilder();
+    
+        foreach ($filters as $key => $value) {
+            match ($key) {
+                FilterKeyType::LEVEL->value => $builder->where($this->getColumn(LogTableColumnType::LEVEL->value), mb_strtolower((string) $value)),
+                FilterKeyType::DATE_FROM->value => $builder->where($this->getColumn(LogTableColumnType::TIMESTAMP->value), '>=', $value),
+                FilterKeyType::DATE_TO->value => $builder->where($this->getColumn(LogTableColumnType::TIMESTAMP->value), '<=', $value),
+                FilterKeyType::CHANNEL->value => $builder->where($this->getColumn(LogTableColumnType::CHANNEL->value), $value),
+                default => $this->applyCustomFilter($builder, $key, $value),
+            };
+        }
+    
+        $builder->orderByDesc($this->getColumn(LogTableColumnType::TIMESTAMP->value));
+    
+        return $this->executeQuery($builder, $chunk);
+    }
+
+    /**
+     * Executes the query builder and returns LogData array.
+     * Optionally processes results in chunks for memory efficiency.
+     * 
+     * @return array<LogData>
+     */
+    protected function executeQuery(Builder $builder, bool $chunk = false): array
+    {
         if ($chunk) {
             $chunkSize = (int) config('laravel-log-reader.db.chunk_size', 500);
             $results = [];
@@ -52,33 +88,6 @@ final readonly class DatabaseLogReader implements LogReaderInterface
         }
 
         return $this->convertToLogData($builder->get()->all());
-    }
-
-    public function filter(array $filters = []): array
-    {
-        $builder = $this->getQueryBuilder();
-
-        if (empty($filters)) {
-            return $this->convertToLogData(
-                $builder->orderByDesc($this->getColumn(LogTableColumnType::TIMESTAMP->value))->get()->all()
-            );
-        }
-
-        foreach ($filters as $key => $value) {
-            // Apply specific filters based on known keys
-            match ($key) {
-                FilterKeyType::LEVEL->value => $builder->where($this->getColumn(LogTableColumnType::LEVEL->value), mb_strtolower((string) $value)),
-                FilterKeyType::DATE_FROM->value => $builder->where($this->getColumn(LogTableColumnType::TIMESTAMP->value), '>=', $value),
-                FilterKeyType::DATE_TO->value => $builder->where($this->getColumn(LogTableColumnType::TIMESTAMP->value), '<=', $value),
-                FilterKeyType::CHANNEL->value => $builder->where($this->getColumn(LogTableColumnType::CHANNEL->value), $value),
-                default => $this->applyCustomFilter($builder, $key, $value),
-            };
-        }
-
-        // Return results ordered by creation date descending
-        return $this->convertToLogData(
-            $builder->orderByDesc($this->getColumn(LogTableColumnType::TIMESTAMP->value))->get()->all()
-        );
     }
 
     protected function applyCustomFilter(Builder $builder, string $key, mixed $value): void
