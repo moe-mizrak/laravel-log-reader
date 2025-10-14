@@ -34,8 +34,7 @@ final readonly class FileLogReader implements LogReaderInterface
         return $this->processFileChunks($chunk, function (array $logs) use ($searchTerm): array {
             return array_filter(
                 $logs,
-                fn(LogData $log) =>
-                    str_contains(mb_strtolower($log->message ?? ''), $searchTerm) ||
+                fn(LogData $log) => str_contains(mb_strtolower($log->message ?? ''), $searchTerm) ||
                     str_contains(mb_strtolower($log->context ?? ''), $searchTerm)
             );
         });
@@ -65,7 +64,7 @@ final readonly class FileLogReader implements LogReaderInterface
 
     /**
      * @param callable(array<LogData>)
-     * 
+     *
      * @return array<LogData>
      */
     protected function processFileChunks(bool $chunk, callable $callback): array

@@ -52,7 +52,7 @@ final readonly class DatabaseLogReader implements LogReaderInterface
     public function filter(array $filters = [], bool $chunk = false): array
     {
         $builder = $this->getQueryBuilder();
-    
+
         foreach ($filters as $key => $value) {
             match ($key) {
                 FilterKeyType::LEVEL->value => $builder->where($this->getColumn(LogTableColumnType::LEVEL->value), mb_strtolower((string) $value)),
@@ -62,16 +62,16 @@ final readonly class DatabaseLogReader implements LogReaderInterface
                 default => $this->applyCustomFilter($builder, $key, $value),
             };
         }
-    
+
         $builder->orderByDesc($this->getColumn(LogTableColumnType::TIMESTAMP->value));
-    
+
         return $this->executeQuery($builder, $chunk);
     }
 
     /**
      * Executes the query builder and returns LogData array.
      * Optionally processes results in chunks for memory efficiency.
-     * 
+     *
      * @return array<LogData>
      */
     protected function executeQuery(Builder $builder, bool $chunk = false): array
