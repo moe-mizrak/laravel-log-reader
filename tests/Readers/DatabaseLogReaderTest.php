@@ -319,7 +319,6 @@ final class DatabaseLogReaderTest extends TestCase
         /* ASSERT */
         $this->assertCount(1, $results);
         $log = $results[0];
-
         $this->assertSame('User metadata logged', $log->message);
         $this->assertIsArray($log->extra);
         $this->assertSame($userId, $log->extra['user_id']);
@@ -428,6 +427,66 @@ final class DatabaseLogReaderTest extends TestCase
         $expected = [];
         for ($i = $count; $i >= 1; $i--) {
             $expected[] = "Info {$i}";
+        }
+        $messages = array_map(fn($r) => $r->message, $results);
+        $this->assertSame($expected, $messages);
+    }
+
+    #[Test]
+    public function it_filters_logs_using_chunking(): void
+    {
+        /* SETUP */
+        config(['laravel-log-reader.db.chunk_size' => 1]);
+
+        /* EXECUTE */
+        $results = $this->databaseLogReader->filter([FilterKeyType::LEVEL->value => 'error'], true);
+
+        /* ASSERT */
+        $this->assertCount(1, $results);
+        $this->assertSame('Payment failed', $results[0]->message);
+    }
+
+    #[Test]
+    public function it_filters_returns_same_results_with_and_without_chunking(): void
+    {
+        /* SETUP */
+        config(['laravel-log-reader.db.chunk_size' => 1]);
+
+        /* EXECUTE */
+        $nonChunked = $this->databaseLogReader->filter([FilterKeyType::CHANNEL->value => 'payment'], false);
+        $chunked = $this->databaseLogReader->filter([FilterKeyType::CHANNEL->value => 'payment'], true);
+
+        /* ASSERT */
+        $this->assertCount(1, $nonChunked);
+        $this->assertCount(1, $chunked);
+        $this->assertSame($nonChunked[0]->message, $chunked[0]->message);
+    }
+
+    #[Test]
+    public function it_filters_logs_with_chunk_size_greater_than_one(): void
+    {
+        /* SETUP */
+        config(['laravel-log-reader.db.chunk_size' => 2]);
+        $count = 5;
+        for ($i = 1; $i <= $count; $i++) {
+            DB::table($this->table)->insert([
+                'level' => 'warning',
+                'message' => "Warning {$i}",
+                'channel' => 'bulk',
+                'context' => '{}',
+                'extra' => '{}',
+                'created_at' => now()->subSeconds($count - $i),
+            ]);
+        }
+
+        /* EXECUTE */
+        $results = $this->databaseLogReader->filter([FilterKeyType::LEVEL->value => 'warning'], true);
+
+        /* ASSERT */
+        $this->assertCount($count, $results);
+        $expected = [];
+        for ($i = $count; $i >= 1; $i--) {
+            $expected[] = "Warning {$i}";
         }
         $messages = array_map(fn($r) => $r->message, $results);
         $this->assertSame($expected, $messages);

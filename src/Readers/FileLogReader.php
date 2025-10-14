@@ -20,84 +20,96 @@ final readonly class FileLogReader implements LogReaderInterface
 
     public function __construct(protected string $filePath) {}
 
+    /**
+     * {@inheritDoc}
+     */
     public function search(string $query, bool $chunk = false): array
     {
-        if (empty($query)) {
+        if (empty($query) || ! file_exists($this->filePath)) {
             return [];
         }
 
         $searchTerm = mb_strtolower($query);
 
-        if ($chunk) {
-            $chunkSize = (int) config('laravel-log-reader.file.chunk_size', 512 * 1024); // default 512KB
-            $handle = @fopen($this->filePath, 'r');
-
-            if (! $handle) {
-                return [];
-            }
-
-            $results = [];
-            $buffer = '';
-
-            while (! feof($handle)) {
-                $buffer .= fread($handle, $chunkSize);
-
-                if (! feof($handle)) {
-                    $lastNewLinePos = strrpos($buffer, PHP_EOL);
-
-                    if ($lastNewLinePos === false) {
-                        // no newline yet — read more before parsing
-                        continue;
-                    }
-
-                    $contentChunk = substr($buffer, 0, $lastNewLinePos);
-                    $buffer = substr($buffer, $lastNewLinePos + 1);
-                } else {
-                    $contentChunk = $buffer;
-                    $buffer = '';
-                }
-
-                // Parse and filter this chunk
-                $logs = $this->convertToLogData($this->extractLogsFromContent($contentChunk));
-
-                $filtered = array_filter(
-                    $logs,
-                    fn(LogData $log) => str_contains(mb_strtolower($log->message ?? ''), $searchTerm)
-                        || str_contains(mb_strtolower($log->context ?? ''), $searchTerm)
-                );
-
-                $results = array_merge($results, array_values($filtered));
-            }
-
-            fclose($handle);
-
-            return $results;
-        }
-
-        // Non-chunked (default)
-        $logs = $this->parseLogFile();
-
-        return array_values(array_filter(
-            $logs,
-            fn(LogData $log) => str_contains(mb_strtolower($log->message ?? ''), $searchTerm) ||
-                str_contains(mb_strtolower($log->context ?? ''), $searchTerm)
-        ));
+        return $this->processFileChunks($chunk, function (array $logs) use ($searchTerm): array {
+            return array_filter(
+                $logs,
+                fn(LogData $log) => str_contains(mb_strtolower($log->message ?? ''), $searchTerm) ||
+                    str_contains(mb_strtolower($log->context ?? ''), $searchTerm)
+            );
+        });
     }
 
-    // todo add chunking/stream logic to filter method for both database filter method and here
-    public function filter(array $filters = []): array
+    /**
+     * {@inheritDoc}
+     */
+    public function filter(array $filters = [], bool $chunk = false): array
     {
-        $logs = $this->parseLogFile();
+        if (! file_exists($this->filePath)) {
+            return [];
+        }
 
         if (empty($filters)) {
+            return $this->parseLogFile();
+        }
+
+        return $this->processFileChunks($chunk, function (array $logs) use ($filters): array {
+            foreach ($filters as $key => $value) {
+                $logs = array_filter($logs, fn(LogData $log) => $this->matchesFilter($log, $key, $value));
+            }
+
             return $logs;
+        });
+    }
+
+    /**
+     * @param callable(array<LogData>)
+     *
+     * @return array<LogData>
+     */
+    protected function processFileChunks(bool $chunk, callable $callback): array
+    {
+        if (! $chunk) {
+            $logs = $this->parseLogFile();
+
+            return array_values($callback($logs));
         }
 
-        foreach ($filters as $key => $value) {
-            $logs = array_filter($logs, fn(LogData $log) => $this->matchesFilter($log, $key, $value));
+        $chunkSize = (int) config('laravel-log-reader.file.chunk_size', 512 * 1024);
+        $handle = @fopen($this->filePath, 'r');
+
+        if (! $handle) {
+            return [];
         }
 
-        return array_values($logs);
+        $results = [];
+        $buffer = '';
+
+        while (! feof($handle)) {
+            $buffer .= fread($handle, $chunkSize);
+
+            if (! feof($handle)) {
+                $lastNewLinePos = strrpos($buffer, PHP_EOL);
+
+                if ($lastNewLinePos === false) {
+                    continue;
+                }
+
+                $contentChunk = substr($buffer, 0, $lastNewLinePos);
+                $buffer = substr($buffer, $lastNewLinePos + 1);
+            } else {
+                $contentChunk = $buffer;
+                $buffer = '';
+            }
+
+            $logs = $this->convertToLogData($this->extractLogsFromContent($contentChunk));
+            $filtered = $callback($logs);
+            $results = array_merge($results, array_values($filtered));
+        }
+
+        fclose($handle);
+
+        return $results;
     }
 
     /**

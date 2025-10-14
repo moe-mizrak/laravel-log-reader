@@ -237,8 +237,6 @@ final class FileLogReaderTest extends TestCase
     
         /* ASSERT */
         $this->assertCount(count($nonChunked), $chunked);
-    
-        /* ASSERT */
         $nonChunkedMessages = array_map(fn($r) => $r->message, $nonChunked);
         $chunkedMessages = array_map(fn($r) => $r->message, $chunked);
         $this->assertSame($nonChunkedMessages, $chunkedMessages);
@@ -276,6 +274,40 @@ final class FileLogReaderTest extends TestCase
         }
         $messages = array_map(fn($r) => $r->message, $results);
         $this->assertSame($expectedMessages, $messages);
+    }
+
+    #[Test]
+    public function it_filters_logs_using_chunking(): void
+    {
+        /* SETUP */
+        config(['laravel-log-reader.file.chunk_size' => 64]);
+
+        /* EXECUTE */
+        $results = $this->fileReader->filter([
+            FilterKeyType::LEVEL->value => 'error',
+        ], true);
+
+        /* ASSERT */
+        $this->assertCount(1, $results);
+        $this->assertSame('ERROR', $results[0]->level);
+        $this->assertStringContainsString('undefined method', $results[0]->message);
+    }
+
+    #[Test]
+    public function it_filters_using_chunking_and_checks_same_results_with_and_without_chunking(): void
+    {
+        /* SETUP */
+        config(['laravel-log-reader.file.chunk_size' => 64]);
+
+        /* EXECUTE */
+        $nonChunked = $this->fileReader->filter([FilterKeyType::LEVEL->value => 'info'], false);
+        $chunked = $this->fileReader->filter([FilterKeyType::LEVEL->value => 'info'], true);
+
+        /* ASSERT */
+        $this->assertCount(count($nonChunked), $chunked);
+        $nonChunkedMessages = array_map(fn($r) => $r->message, $nonChunked);
+        $chunkedMessages = array_map(fn($r) => $r->message, $chunked);
+        $this->assertSame($nonChunkedMessages, $chunkedMessages);
     }
 
     /**
