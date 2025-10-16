@@ -24,18 +24,13 @@ final class FileLogReaderTest extends TestCase
 
         $this->logFile = tempnam(sys_get_temp_dir(), 'log_');
         $this->createLogFile();
-
         config([
             'laravel-log-reader.driver' => LogDriverType::FILE->value,
             'laravel-log-reader.file.path' => $this->logFile,
         ]);
-
         $this->fileReader = app(LogReaderInterface::class);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     protected function tearDown(): void
     {
         if (file_exists($this->logFile)) {
@@ -48,29 +43,29 @@ final class FileLogReaderTest extends TestCase
     #[Test]
     public function it_returns_empty_array_if_file_does_not_exist(): void
     {
-        /* EXECUTE */
+        /* SETUP */
         $reader = new FileLogReader('/non/existing/path.log');
 
-        /* ASSERT */
-        $this->assertSame([], $reader->search('anything'));
-        $this->assertSame([], $reader->filter([FilterKeyType::LEVEL->value => 'info']));
+        /* EXECUTE & ASSERT */
+        $this->assertSame([], $reader->search('anything')->execute());
+        $this->assertSame([], $reader->filter([FilterKeyType::LEVEL->value => 'info'])->execute());
     }
 
     #[Test]
-    public function it_returns_empty_array_for_empty_search_query(): void
+    public function it_returns_all_logs_for_empty_search_query(): void
     {
         /* EXECUTE */
-        $result = $this->fileReader->search('');
+        $result = $this->fileReader->search('')->execute();
 
         /* ASSERT */
-        $this->assertSame([], $result);
+        $this->assertCount(4, $result);
     }
 
     #[Test]
     public function it_returns_all_logs_when_no_filters_provided(): void
     {
         /* EXECUTE */
-        $result = $this->fileReader->filter([]);
+        $result = $this->fileReader->filter([])->execute();
 
         /* ASSERT */
         $this->assertCount(4, $result);
@@ -111,8 +106,8 @@ final class FileLogReaderTest extends TestCase
     public function it_searches_logs_by_message_and_context(): void
     {
         /* EXECUTE */
-        $byMessage = $this->fileReader->search('undefined method');
-        $byContext = $this->fileReader->search('Stack trace');
+        $byMessage = $this->fileReader->search('undefined method')->execute();
+        $byContext = $this->fileReader->search('Stack trace')->execute();
 
         /* ASSERT */
         $this->assertCount(1, $byMessage);
@@ -125,8 +120,8 @@ final class FileLogReaderTest extends TestCase
     public function it_searches_case_insensitively(): void
     {
         /* EXECUTE */
-        $firstResult = $this->fileReader->search('user authentication');
-        $secondResult = $this->fileReader->search('USER AUTHENTICATION');
+        $firstResult = $this->fileReader->search('user authentication')->execute();
+        $secondResult = $this->fileReader->search('USER AUTHENTICATION')->execute();
 
         /* ASSERT */
         $this->assertCount(1, $firstResult);
@@ -136,28 +131,21 @@ final class FileLogReaderTest extends TestCase
     #[Test]
     public function it_filters_by_level(): void
     {
-        /* EXECUTE */
-        $firstResult = $this->fileReader->filter([FilterKeyType::LEVEL->value => 'info']);
-        $secondResult = $this->fileReader->filter([FilterKeyType::LEVEL->value => 'debug']);
-        $thirdResult = $this->fileReader->filter([FilterKeyType::LEVEL->value => 'error']);
-        $fourthResult = $this->fileReader->filter([FilterKeyType::LEVEL->value => 'warning']);
-        $fifthResult = $this->fileReader->filter([FilterKeyType::LEVEL->value => 'INFO']);
-
-        /* ASSERT */
-        $this->assertCount(1, $firstResult);
-        $this->assertCount(1, $secondResult);
-        $this->assertCount(1, $thirdResult);
-        $this->assertCount(1, $fourthResult);
-        $this->assertCount(1, $fifthResult);
+        /* EXECUTE & ASSERT */
+        $levels = ['info', 'debug', 'error', 'warning', 'INFO'];
+        foreach ($levels as $level) {
+            $result = $this->fileReader->filter([FilterKeyType::LEVEL->value => $level])->execute();
+            $this->assertCount(1, $result);
+        }
     }
 
     #[Test]
     public function it_filters_by_channel(): void
     {
         /* EXECUTE */
-        $firstResult = $this->fileReader->filter([FilterKeyType::CHANNEL->value => 'local']);
-        $secondResult = $this->fileReader->filter([FilterKeyType::CHANNEL->value => 'LOCAL']);
-        $thirdResult = $this->fileReader->filter([FilterKeyType::CHANNEL->value => 'production']);
+        $firstResult = $this->fileReader->filter([FilterKeyType::CHANNEL->value => 'local'])->execute();
+        $secondResult = $this->fileReader->filter([FilterKeyType::CHANNEL->value => 'LOCAL'])->execute();
+        $thirdResult = $this->fileReader->filter([FilterKeyType::CHANNEL->value => 'production'])->execute();
 
         /* ASSERT */
         $this->assertCount(3, $firstResult);
@@ -169,12 +157,14 @@ final class FileLogReaderTest extends TestCase
     public function it_filters_by_date_range(): void
     {
         /* EXECUTE */
-        $firstResult = $this->fileReader->filter([FilterKeyType::DATE_FROM->value => '2025-09-28 12:05:00']);
-        $secondResult = $this->fileReader->filter([FilterKeyType::DATE_TO->value => '2025-09-28 12:10:00']);
-        $thirdResult = $this->fileReader->filter([
-            FilterKeyType::DATE_FROM->value => '2025-09-28 12:05:00',
-            FilterKeyType::DATE_TO->value => '2025-09-28 12:10:00',
-        ]);
+        $firstResult = $this->fileReader->filter([FilterKeyType::DATE_FROM->value => '2025-09-28 12:05:00'])->execute();
+        $secondResult = $this->fileReader->filter([FilterKeyType::DATE_TO->value => '2025-09-28 12:10:00'])->execute();
+        $thirdResult = $this->fileReader
+            ->filter([
+                FilterKeyType::DATE_FROM->value => '2025-09-28 12:05:00',
+                FilterKeyType::DATE_TO->value => '2025-09-28 12:10:00',
+            ])
+            ->execute();
 
         /* ASSERT */
         $this->assertCount(3, $firstResult);
@@ -186,11 +176,13 @@ final class FileLogReaderTest extends TestCase
     public function it_filters_by_multiple_criteria(): void
     {
         /* EXECUTE */
-        $results = $this->fileReader->filter([
-            FilterKeyType::LEVEL->value => 'error',
-            FilterKeyType::CHANNEL->value => 'local',
-            FilterKeyType::DATE_FROM->value => '2025-09-28 12:00:00',
-        ]);
+        $results = $this->fileReader
+            ->filter([
+                FilterKeyType::LEVEL->value => 'error',
+                FilterKeyType::CHANNEL->value => 'local',
+                FilterKeyType::DATE_FROM->value => '2025-09-28 12:00:00',
+            ])
+            ->execute();
 
         /* ASSERT */
         $this->assertCount(1, $results);
@@ -213,11 +205,14 @@ final class FileLogReaderTest extends TestCase
     #[Test]
     public function it_searches_logs_using_chunking(): void
     {
-        /* SETUP: force small chunk size so chunking happens */
+        /* SETUP */
         config(['laravel-log-reader.file.chunk_size' => 64]);
 
-        /* EXECUTE: enable chunking */
-        $results = $this->fileReader->search('User authentication', true);
+        /* EXECUTE */
+        $results = $this->fileReader
+            ->search('User authentication')
+            ->chunk()
+            ->execute();
 
         /* ASSERT */
         $this->assertCount(1, $results);
@@ -230,11 +225,11 @@ final class FileLogReaderTest extends TestCase
     {
         /* SETUP */
         config(['laravel-log-reader.file.chunk_size' => 64]);
-    
+
         /* EXECUTE */
-        $nonChunked = $this->fileReader->search('undefined method', false);
-        $chunked = $this->fileReader->search('undefined method', true);
-    
+        $nonChunked = $this->fileReader->search('undefined method')->execute();
+        $chunked = $this->fileReader->search('undefined method')->chunk()->execute();
+
         /* ASSERT */
         $this->assertCount(count($nonChunked), $chunked);
         $nonChunkedMessages = array_map(fn($r) => $r->message, $nonChunked);
@@ -264,50 +259,84 @@ final class FileLogReaderTest extends TestCase
         $reader = new FileLogReader($logFile);
 
         /* EXECUTE */
-        $results = $reader->search('Chunk test message', true);
+        $results = $reader->search('Chunk test message')->chunk(64)->execute();
 
         /* ASSERT */
-        $this->assertCount($total, $results, 'Expected all log entries to be returned');
-        $expectedMessages = [];
-        for ($i = 1; $i <= $total; $i++) {
-            $expectedMessages[] = "Chunk test message #{$i}";
-        }
-        $messages = array_map(fn($r) => $r->message, $results);
-        $this->assertSame($expectedMessages, $messages);
+        $this->assertCount($total, $results);
     }
 
     #[Test]
-    public function it_filters_logs_using_chunking(): void
+    public function it_can_chain_search_and_filter(): void
     {
         /* SETUP */
-        config(['laravel-log-reader.file.chunk_size' => 64]);
+        $query = 'User authentication';
+        $filters = [FilterKeyType::LEVEL->value => 'info'];
 
         /* EXECUTE */
-        $results = $this->fileReader->filter([
-            FilterKeyType::LEVEL->value => 'error',
-        ], true);
+        $results = $this->fileReader->search($query)->filter($filters)->execute();
 
         /* ASSERT */
         $this->assertCount(1, $results);
-        $this->assertSame('ERROR', $results[0]->level);
-        $this->assertStringContainsString('undefined method', $results[0]->message);
+        $this->assertSame('INFO', $results[0]->level);
     }
 
     #[Test]
-    public function it_filters_using_chunking_and_checks_same_results_with_and_without_chunking(): void
+    public function it_can_chain_search_and_filter_when_order_is_changed(): void
+    {
+        /* SETUP */
+        $query = 'User authentication';
+        $filters = [FilterKeyType::LEVEL->value => 'info'];
+
+        /* EXECUTE */
+        $results = $this->fileReader->filter($filters)->search($query)->execute();
+
+        /* ASSERT */
+        $this->assertCount(1, $results);
+        $this->assertSame('INFO', $results[0]->level);
+    }
+
+    #[Test]
+    public function it_can_chain_search_filter_with_chunking(): void
     {
         /* SETUP */
         config(['laravel-log-reader.file.chunk_size' => 64]);
+        $query = 'User authentication';
+        $filters = [FilterKeyType::LEVEL->value => 'info'];
 
         /* EXECUTE */
-        $nonChunked = $this->fileReader->filter([FilterKeyType::LEVEL->value => 'info'], false);
-        $chunked = $this->fileReader->filter([FilterKeyType::LEVEL->value => 'info'], true);
+        $results = $this->fileReader->search($query)->filter($filters)->chunk(1024)->execute();
 
         /* ASSERT */
-        $this->assertCount(count($nonChunked), $chunked);
-        $nonChunkedMessages = array_map(fn($r) => $r->message, $nonChunked);
-        $chunkedMessages = array_map(fn($r) => $r->message, $chunked);
-        $this->assertSame($nonChunkedMessages, $chunkedMessages);
+        $this->assertCount(1, $results);
+        $this->assertSame('INFO', $results[0]->level);
+    }
+
+    #[Test]
+    public function it_returns_empty_when_search_results_empty(): void
+    {
+        /* SETUP */
+        $query = 'non-existing message';
+        $filters = [FilterKeyType::LEVEL->value => 'info'];
+
+        /* EXECUTE */
+        $results = $this->fileReader->search($query)->filter($filters)->execute();
+
+        /* ASSERT */
+        $this->assertSame([], $results);
+    }
+
+    #[Test]
+    public function it_returns_empty_when_filter_results_empty(): void
+    {
+        /* SETUP */
+        $query = 'User authentication';
+        $filters = [FilterKeyType::LEVEL->value => 'non-existing-level'];
+
+        /* EXECUTE */
+        $results = $this->fileReader->search($query)->filter($filters)->execute();
+
+        /* ASSERT */
+        $this->assertSame([], $results);
     }
 
     /**

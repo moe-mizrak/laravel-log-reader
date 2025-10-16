@@ -12,14 +12,21 @@ interface LogReaderInterface
     /**
      * Search logs based on a query string.
      *
-     * @return array<LogData>
+     * @return $this
      */
-    public function search(string $query, bool $chunk = false): array;
+    public function search(string $query): static;
 
     /**
      * Filter logs based on filter criteria.
      *
-     * @return array<LogData>
+     * @return $this
      */
-    public function filter(array $filters = [], bool $chunk = false): array;
+    public function filter(array $filters = []): static;
+
+    /**
+     * Enable chunked reading of logs.
+     *
+     * @return $this
+     */
+    public function chunk(?int $chunkSize = null): static;
 }
