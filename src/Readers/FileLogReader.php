@@ -79,7 +79,7 @@ final class FileLogReader implements LogReaderInterface
     }
 
     /**
-     * @return array<LogData>
+     * {@inheritDoc}
      */
     public function execute(): array
     {

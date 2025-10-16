@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace MoeMizrak\LaravelLogReader\Readers;
 
+use MoeMizrak\LaravelLogReader\Data\LogData;
+
 /**
  * Interface for log readers, defining methods for searching and filtering logs.
  */
@@ -29,4 +31,9 @@ interface LogReaderInterface
      * @return $this
      */
     public function chunk(?int $chunkSize = null): static;
+
+    /**
+     * @return array<LogData>
+     */
+    public function execute(): array;
 }

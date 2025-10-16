@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace MoeMizrak\LaravelLogReader\Readers;
 
-use MoeMizrak\LaravelLogReader\Data\LogData;
 use MoeMizrak\LaravelLogReader\Enums\FilterKeyType;
 use MoeMizrak\LaravelLogReader\Enums\LogTableColumnType;
 use MoeMizrak\LaravelLogReader\Traits\LogReaderTrait;
@@ -65,7 +64,7 @@ final class DatabaseLogReader implements LogReaderInterface
     }
 
     /**
-     * @return array<LogData>
+     * {@inheritDoc}
      */
     public function execute(): array
     {
