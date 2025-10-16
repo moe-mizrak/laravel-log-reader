@@ -54,20 +54,20 @@ final class DatabaseLogReaderTest extends TestCase
     }
 
     #[Test]
-    public function it_returns_empty_array_for_empty_search_query(): void
+    public function it_returns_all_logs_for_empty_search_query(): void
     {
         /* EXECUTE */
-        $result = $this->databaseLogReader->search('');
+        $result = $this->databaseLogReader->search('')->execute();
 
         /* ASSERT */
-        $this->assertSame([], $result);
+        $this->assertCount(3, $result);
     }
 
     #[Test]
     public function it_returns_all_logs_when_no_filters_provided(): void
     {
         /* EXECUTE */
-        $result = $this->databaseLogReader->filter([]);
+        $result = $this->databaseLogReader->filter([])->execute();
 
         /* ASSERT */
         $this->assertCount(3, $result);
@@ -77,7 +77,7 @@ final class DatabaseLogReaderTest extends TestCase
     public function it_searches_logs_by_message(): void
     {
         /* EXECUTE */
-        $results = $this->databaseLogReader->search('Payment');
+        $results = $this->databaseLogReader->search('Payment')->execute();
 
         /* ASSERT */
         $this->assertCount(1, $results);
@@ -88,7 +88,7 @@ final class DatabaseLogReaderTest extends TestCase
     public function it_searches_logs_by_extra(): void
     {
         /* EXECUTE */
-        $results = $this->databaseLogReader->search('"user_id":1');
+        $results = $this->databaseLogReader->search('"user_id":1')->execute();
 
         /* ASSERT */
         $this->assertCount(1, $results);
@@ -99,7 +99,7 @@ final class DatabaseLogReaderTest extends TestCase
     public function it_searches_logs_by_context(): void
     {
         /* EXECUTE */
-        $results = $this->databaseLogReader->search('"action":"login"');
+        $results = $this->databaseLogReader->search('"action":"login"')->execute();
 
         /* ASSERT */
         $this->assertCount(1, $results);
@@ -110,9 +110,9 @@ final class DatabaseLogReaderTest extends TestCase
     public function it_searches_case_insensitively(): void
     {
         /* EXECUTE */
-        $firstResult = $this->databaseLogReader->search('payment');
-        $secondResult = $this->databaseLogReader->search('PAYMENT');
-        $thirdResult = $this->databaseLogReader->search('PaYmEnT');
+        $firstResult = $this->databaseLogReader->search('payment')->execute();
+        $secondResult = $this->databaseLogReader->search('PAYMENT')->execute();
+        $thirdResult = $this->databaseLogReader->search('PaYmEnT')->execute();
 
         /* ASSERT */
         $this->assertCount(1, $firstResult);
@@ -124,7 +124,7 @@ final class DatabaseLogReaderTest extends TestCase
     public function it_searches_both_message_and_extra(): void
     {
         /* EXECUTE */
-        $results = $this->databaseLogReader->search('user_id');
+        $results = $this->databaseLogReader->search('user_id')->execute();
 
         /* ASSERT */
         $this->assertCount(2, $results);
@@ -134,7 +134,7 @@ final class DatabaseLogReaderTest extends TestCase
     public function it_returns_empty_for_no_search_matches(): void
     {
         /* EXECUTE */
-        $results = $this->databaseLogReader->search('nonexistent');
+        $results = $this->databaseLogReader->search('nonexistent')->execute();
 
         /* ASSERT */
         $this->assertSame([], $results);
@@ -144,7 +144,7 @@ final class DatabaseLogReaderTest extends TestCase
     public function it_filters_logs_by_level(): void
     {
         /* EXECUTE */
-        $results = $this->databaseLogReader->filter([FilterKeyType::LEVEL->value => 'error']);
+        $results = $this->databaseLogReader->filter([FilterKeyType::LEVEL->value => 'error'])->execute();
 
         /* ASSERT */
         $this->assertCount(1, $results);
@@ -156,9 +156,9 @@ final class DatabaseLogReaderTest extends TestCase
     public function it_filters_logs_by_level_case_insensitively(): void
     {
         /* EXECUTE */
-        $firstResult = $this->databaseLogReader->filter([FilterKeyType::LEVEL->value => 'error']);
-        $secondResult = $this->databaseLogReader->filter([FilterKeyType::LEVEL->value => 'ERROR']);
-        $thirdResult = $this->databaseLogReader->filter([FilterKeyType::LEVEL->value => 'ErRoR']);
+        $firstResult = $this->databaseLogReader->filter([FilterKeyType::LEVEL->value => 'error'])->execute();
+        $secondResult = $this->databaseLogReader->filter([FilterKeyType::LEVEL->value => 'ERROR'])->execute();
+        $thirdResult = $this->databaseLogReader->filter([FilterKeyType::LEVEL->value => 'ErRoR'])->execute();
 
         /* ASSERT */
         $this->assertCount(1, $firstResult);
@@ -170,7 +170,7 @@ final class DatabaseLogReaderTest extends TestCase
     public function it_filters_logs_by_channel(): void
     {
         /* EXECUTE */
-        $results = $this->databaseLogReader->filter([FilterKeyType::CHANNEL->value => 'auth']);
+        $results = $this->databaseLogReader->filter([FilterKeyType::CHANNEL->value => 'auth'])->execute();
 
         /* ASSERT */
         $this->assertCount(1, $results);
@@ -184,7 +184,7 @@ final class DatabaseLogReaderTest extends TestCase
         /* EXECUTE */
         $results = $this->databaseLogReader->filter([
             FilterKeyType::DATE_FROM->value => now()->subMinutes(6),
-        ]);
+        ])->execute();
 
         /* ASSERT */
         $this->assertCount(2, $results);
@@ -196,7 +196,7 @@ final class DatabaseLogReaderTest extends TestCase
         /* EXECUTE */
         $results = $this->databaseLogReader->filter([
             FilterKeyType::DATE_TO->value => now()->subMinutes(6),
-        ]);
+        ])->execute();
 
         /* ASSERT */
         $this->assertCount(1, $results);
@@ -210,7 +210,7 @@ final class DatabaseLogReaderTest extends TestCase
         $results = $this->databaseLogReader->filter([
             FilterKeyType::DATE_FROM->value => now()->subMinutes(6),
             FilterKeyType::DATE_TO->value => now(),
-        ]);
+        ])->execute();
 
         /* ASSERT */
         $this->assertCount(2, $results);
@@ -226,7 +226,7 @@ final class DatabaseLogReaderTest extends TestCase
             FilterKeyType::LEVEL->value => 'error',
             FilterKeyType::CHANNEL->value => 'payment',
             FilterKeyType::DATE_FROM->value => now()->subMinutes(6),
-        ]);
+        ])->execute();
 
         /* ASSERT */
         $this->assertCount(1, $results);
@@ -247,7 +247,7 @@ final class DatabaseLogReaderTest extends TestCase
         ]);
 
         /* EXECUTE */
-        $results = $this->databaseLogReader->filter([FilterKeyType::CHANNEL->value => 'test']);
+        $results = $this->databaseLogReader->filter([FilterKeyType::CHANNEL->value => 'test'])->execute();
 
         /* ASSERT */
         $this->assertCount(1, $results);
@@ -258,7 +258,7 @@ final class DatabaseLogReaderTest extends TestCase
     public function it_orders_results_by_newest_first(): void
     {
         /* EXECUTE */
-        $results = $this->databaseLogReader->filter([]);
+        $results = $this->databaseLogReader->filter([])->execute();
 
         /* ASSERT */
         $this->assertCount(3, $results);
@@ -281,7 +281,7 @@ final class DatabaseLogReaderTest extends TestCase
         ]);
 
         /* EXECUTE */
-        $results = $this->databaseLogReader->filter([FilterKeyType::CHANNEL->value => 'job']);
+        $results = $this->databaseLogReader->filter([FilterKeyType::CHANNEL->value => 'job'])->execute();
 
         /* ASSERT */
         $this->assertCount(1, $results);
@@ -314,7 +314,7 @@ final class DatabaseLogReaderTest extends TestCase
         /* EXECUTE */
         $results = $this->databaseLogReader->filter([
             FilterKeyType::CHANNEL->value => 'user',
-        ]);
+        ])->execute();
 
         /* ASSERT */
         $this->assertCount(1, $results);
@@ -345,7 +345,7 @@ final class DatabaseLogReaderTest extends TestCase
         /* EXECUTE */
         $results = $this->databaseLogReader->filter([
             FilterKeyType::CHANNEL->value => 'user',
-        ]);
+        ])->execute();
 
         /* ASSERT */
         $this->assertCount(1, $results);
@@ -363,7 +363,7 @@ final class DatabaseLogReaderTest extends TestCase
         $reader = new DatabaseLogReader($this->table, config('database.default'));
 
         /* EXECUTE */
-        $results = $reader->filter([]);
+        $results = $reader->filter([])->execute();
 
         /* ASSERT */
         $this->assertCount(3, $results);
@@ -376,7 +376,7 @@ final class DatabaseLogReaderTest extends TestCase
         config(['laravel-log-reader.db.chunk_size' => 1]);
 
         /* EXECUTE */
-        $results = $this->databaseLogReader->search(query: 'user_id', chunk: true);
+        $results = $this->databaseLogReader->search('user_id')->chunk()->execute();
 
         /* ASSERT */
         $this->assertCount(2, $results);
@@ -391,8 +391,8 @@ final class DatabaseLogReaderTest extends TestCase
         config(['laravel-log-reader.db.chunk_size' => 1]);
 
         /* EXECUTE */
-        $nonChunked = $this->databaseLogReader->search(query: 'user_id', chunk: false);
-        $chunked = $this->databaseLogReader->search(query: 'user_id', chunk: true);
+        $nonChunked = $this->databaseLogReader->search('user_id')->execute();
+        $chunked = $this->databaseLogReader->search('user_id')->chunk()->execute();
 
         /* ASSERT */
         $this->assertCount(2, $nonChunked);
@@ -420,7 +420,7 @@ final class DatabaseLogReaderTest extends TestCase
         }
 
         /* EXECUTE */
-        $results = $this->databaseLogReader->search('Info', true);
+        $results = $this->databaseLogReader->search('Info')->chunk()->execute();
 
         /* ASSERT */
         $this->assertCount($count, $results);
@@ -439,7 +439,7 @@ final class DatabaseLogReaderTest extends TestCase
         config(['laravel-log-reader.db.chunk_size' => 1]);
 
         /* EXECUTE */
-        $results = $this->databaseLogReader->filter([FilterKeyType::LEVEL->value => 'error'], true);
+        $results = $this->databaseLogReader->filter([FilterKeyType::LEVEL->value => 'error'])->chunk()->execute();
 
         /* ASSERT */
         $this->assertCount(1, $results);
@@ -453,8 +453,8 @@ final class DatabaseLogReaderTest extends TestCase
         config(['laravel-log-reader.db.chunk_size' => 1]);
 
         /* EXECUTE */
-        $nonChunked = $this->databaseLogReader->filter([FilterKeyType::CHANNEL->value => 'payment'], false);
-        $chunked = $this->databaseLogReader->filter([FilterKeyType::CHANNEL->value => 'payment'], true);
+        $nonChunked = $this->databaseLogReader->filter([FilterKeyType::CHANNEL->value => 'payment'])->execute();
+        $chunked = $this->databaseLogReader->filter([FilterKeyType::CHANNEL->value => 'payment'])->chunk()->execute();
 
         /* ASSERT */
         $this->assertCount(1, $nonChunked);
@@ -480,7 +480,7 @@ final class DatabaseLogReaderTest extends TestCase
         }
 
         /* EXECUTE */
-        $results = $this->databaseLogReader->filter([FilterKeyType::LEVEL->value => 'warning'], true);
+        $results = $this->databaseLogReader->filter([FilterKeyType::LEVEL->value => 'warning'])->chunk()->execute();
 
         /* ASSERT */
         $this->assertCount($count, $results);
@@ -490,6 +490,83 @@ final class DatabaseLogReaderTest extends TestCase
         }
         $messages = array_map(fn($r) => $r->message, $results);
         $this->assertSame($expected, $messages);
+    }
+
+    #[Test]
+    public function it_can_chain_search_and_filter(): void
+    {
+        /* SETUP */
+        $query = 'user_id';
+        $filters = [FilterKeyType::LEVEL->value => 'error'];
+
+        /* EXECUTE */
+        $results = $this->databaseLogReader->search($query)->filter($filters)->execute();
+
+        /* ASSERT */
+        $this->assertCount(1, $results);
+        $this->assertSame('Payment failed', $results[0]->message);
+        $this->assertSame('error', $results[0]->level);
+    }
+
+    #[Test]
+    public function it_can_chain_search_and_filter_when_order_is_changed(): void
+    {
+        /* SETUP */
+        $query = 'user_id';
+        $filters = [FilterKeyType::LEVEL->value => 'error'];
+
+        /* EXECUTE */
+        $results = $this->databaseLogReader->filter($filters)->search($query)->execute();
+
+        /* ASSERT */
+        $this->assertCount(1, $results);
+        $this->assertSame('Payment failed', $results[0]->message);
+        $this->assertSame('error', $results[0]->level);
+    }
+
+    #[Test]
+    public function it_can_chain_search_filter_with_chunking(): void
+    {
+        /* SETUP */
+        config(['laravel-log-reader.db.chunk_size' => 1]);
+        $query = 'user_id';
+        $filters = [FilterKeyType::LEVEL->value => 'error'];
+
+        /* EXECUTE */
+        $results = $this->databaseLogReader->search($query)->filter($filters)->chunk()->execute();
+
+        /* ASSERT */
+        $this->assertCount(1, $results);
+        $this->assertSame('Payment failed', $results[0]->message);
+        $this->assertSame('error', $results[0]->level);
+    }
+
+    #[Test]
+    public function it_returns_empty_when_search_results_empty(): void
+    {
+        /* SETUP */
+        $query = 'non-existing message';
+        $filters = [FilterKeyType::LEVEL->value => 'info'];
+
+        /* EXECUTE */
+        $results = $this->databaseLogReader->search($query)->filter($filters)->execute();
+
+        /* ASSERT */
+        $this->assertSame([], $results);
+    }
+
+    #[Test]
+    public function it_returns_empty_when_filter_results_empty(): void
+    {
+        /* SETUP */
+        $query = 'user_id';
+        $filters = [FilterKeyType::LEVEL->value => 'non-existing-level'];
+
+        /* EXECUTE */
+        $results = $this->databaseLogReader->search($query)->filter($filters)->execute();
+
+        /* ASSERT */
+        $this->assertSame([], $results);
     }
 
     /**
