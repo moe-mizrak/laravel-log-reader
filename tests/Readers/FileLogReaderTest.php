@@ -6,6 +6,7 @@ namespace MoeMizrak\LaravelLogReader\Tests\Readers;
 
 use MoeMizrak\LaravelLogReader\Enums\FilterKeyType;
 use MoeMizrak\LaravelLogReader\Enums\LogDriverType;
+use MoeMizrak\LaravelLogReader\Facades\LogReader;
 use MoeMizrak\LaravelLogReader\Readers\FileLogReader;
 use MoeMizrak\LaravelLogReader\Readers\LogReaderInterface;
 use MoeMizrak\LaravelLogReader\Tests\TestCase;
@@ -108,6 +109,20 @@ final class FileLogReaderTest extends TestCase
         /* EXECUTE */
         $byMessage = $this->fileReader->search('undefined method')->execute();
         $byContext = $this->fileReader->search('Stack trace')->execute();
+
+        /* ASSERT */
+        $this->assertCount(1, $byMessage);
+        $this->assertSame('ERROR', $byMessage[0]->level);
+        $this->assertCount(1, $byContext);
+        $this->assertNotEmpty($byContext[0]->context);
+    }
+
+    #[Test]
+    public function it_uses_facade_successfully(): void
+    {
+        /* EXECUTE */
+        $byMessage = LogReader::search('undefined method')->execute();
+        $byContext = LogReader::search('Stack trace')->execute();
 
         /* ASSERT */
         $this->assertCount(1, $byMessage);

@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use MoeMizrak\LaravelLogReader\Enums\FilterKeyType;
 use MoeMizrak\LaravelLogReader\Enums\LogDriverType;
 use MoeMizrak\LaravelLogReader\Enums\LogTableColumnType;
+use MoeMizrak\LaravelLogReader\Facades\LogReader;
 use MoeMizrak\LaravelLogReader\Readers\DatabaseLogReader;
 use MoeMizrak\LaravelLogReader\Readers\LogReaderInterface;
 use MoeMizrak\LaravelLogReader\Tests\TestCase;
@@ -78,6 +79,17 @@ final class DatabaseLogReaderTest extends TestCase
     {
         /* EXECUTE */
         $results = $this->databaseLogReader->search('Payment')->execute();
+
+        /* ASSERT */
+        $this->assertCount(1, $results);
+        $this->assertSame('Payment failed', $results[0]->message);
+    }
+
+    #[Test]
+    public function it_uses_facade_successfully(): void
+    {
+        /* EXECUTE */
+        $results = LogReader::search('Payment')->execute();
 
         /* ASSERT */
         $this->assertCount(1, $results);

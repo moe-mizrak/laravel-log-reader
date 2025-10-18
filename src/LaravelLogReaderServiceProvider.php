@@ -45,8 +45,7 @@ final class LaravelLogReaderServiceProvider extends ServiceProvider
             $driver = config('laravel-log-reader.driver');
 
             return match ($driver) {
-                LogDriverType::DB->value => $app->make(DatabaseLogReader::class),
-                LogDriverType::FILE->value => $app->make(FileLogReader::class),
+                LogDriverType::DB->value, LogDriverType::FILE->value => $app->make(LogReaderInterface::class),
                 default => throw new InvalidArgumentException("Invalid log driver: {$driver}"),
             };
         });
