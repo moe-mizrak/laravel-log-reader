@@ -143,7 +143,7 @@ trait LogReaderTrait
     protected function executeQuery(Builder $builder, bool $chunk = false): array
     {
         if ($chunk) {
-            $chunkSize = (int) config('laravel-log-reader.db.chunk_size', 500);
+            $chunkSize = config('laravel-log-reader.db.chunk_size', 500);
             $results = [];
 
             $builder->chunk($chunkSize, function ($chunk) use (&$results) {
@@ -168,13 +168,9 @@ trait LogReaderTrait
     /**
      * Build the appropriate search expression based on column type and database driver.
      */
-    protected function applyLogSearch(Builder $builder, string $searchTerm, array $searchableColumns): Builder
+    protected function applyLogSearch(Builder $builder, string $searchTerm, array $searchableColumns): void
     {
         $searchTerm = trim($searchTerm);
-
-        if ($searchTerm === '') {
-            return $builder;
-        }
 
         $driver = $builder->getConnection()->getDriverName();
         $table = $builder->from;
@@ -202,8 +198,6 @@ trait LogReaderTrait
                 }
             }
         });
-
-        return $builder;
     }
 
     /**
