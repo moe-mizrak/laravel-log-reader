@@ -168,13 +168,9 @@ trait LogReaderTrait
     /**
      * Build the appropriate search expression based on column type and database driver.
      */
-    protected function applyLogSearch(Builder $builder, string $searchTerm, array $searchableColumns): Builder
+    protected function applyLogSearch(Builder $builder, string $searchTerm, array $searchableColumns): void
     {
         $searchTerm = trim($searchTerm);
-
-        if ($searchTerm === '') {
-            return $builder;
-        }
 
         $driver = $builder->getConnection()->getDriverName();
         $table = $builder->from;
@@ -202,8 +198,6 @@ trait LogReaderTrait
                 }
             }
         });
-
-        return $builder;
     }
 
     /**
