@@ -28,6 +28,7 @@ final class FileLogReaderTest extends TestCase
         config([
             'laravel-log-reader.driver' => LogDriverType::FILE->value,
             'laravel-log-reader.file.path' => $this->logFile,
+            'laravel-log-reader.file.limit' => 10000,
         ]);
         $this->fileReader = app(LogReaderInterface::class);
     }
@@ -352,6 +353,58 @@ final class FileLogReaderTest extends TestCase
 
         /* ASSERT */
         $this->assertSame([], $results);
+    }
+
+    #[Test]
+    public function it_applies_limit_in_non_chunked_mode(): void
+    {
+        /* SETUP */
+        config(['laravel-log-reader.file.limit' => 2]);
+
+        /* EXECUTE */
+        $results = $this->fileReader->execute();
+
+        /* ASSERT */
+        $this->assertCount(2, $results, 'Non-chunked reader should respect the limit');
+    }
+
+    #[Test]
+    public function it_applies_limit_in_chunked_mode(): void
+    {
+        /* SETUP */
+        config([
+            'laravel-log-reader.file.limit' => 2,
+            'laravel-log-reader.file.chunk_size' => 64,
+        ]);
+        $reader = new FileLogReader($this->logFile);
+
+        /* EXECUTE */
+        $results = $reader->chunk()->execute();
+
+        /* ASSERT */
+        $this->assertCount(2, $results, 'Chunked reader should stop reading after reaching limit');
+    }
+
+    #[Test]
+    public function it_never_exceeds_limit_even_with_multiple_chunks_and_matches(): void
+    {
+        /* SETUP */
+        config([
+            'laravel-log-reader.file.limit' => 1,
+            'laravel-log-reader.file.chunk_size' => 32,
+        ]);
+        // Create a file with many repeated log lines to trigger multiple chunk merges
+        file_put_contents($this->logFile, str_repeat(
+            "[2025-09-28 12:00:00] local.INFO: Repeated entry\n",
+            10
+        ));
+        $reader = new FileLogReader($this->logFile);
+
+        /* EXECUTE */
+        $results = $reader->search('Repeated')->chunk()->execute();
+
+        /* ASSERT */
+        $this->assertCount(1, $results, 'Reader must stop after reaching limit even across chunk boundaries');
     }
 
     /**

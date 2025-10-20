@@ -23,6 +23,7 @@ return [
     'file' => [
         'path' => env('LOG_FILE_PATH', storage_path('logs/laravel.log')),
         'chunk_size' => env('LOG_READER_FILE_CHUNK_SIZE', 512 * 1024), // 512KB for file reading
+        'limit' => env('LOG_READER_FILE_QUERY_LIMIT', 10000),
     ],
 
     /*

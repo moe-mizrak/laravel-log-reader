@@ -85,11 +85,17 @@ final class FileLogReader implements LogReaderInterface
     {
         $logs = [];
 
+        $limit = config('laravel-log-reader.file.limit', 10000);
+
         if (! $this->chunk) {
             $logs = $this->parseLogFile();
 
             // Apply search and filter callbacks if set
             $logs = $this->applyCallbacks($logs);
+
+            if ($limit > 0 && count($logs) > $limit) {
+                $logs = array_slice($logs, 0, $limit);
+            }
 
             // If both search and filter were applied, return the search results.
             return array_values($logs);
@@ -126,7 +132,15 @@ final class FileLogReader implements LogReaderInterface
             // Apply search and filter callbacks on the current chunk
             $logs = $this->applyCallbacks($logs);
 
-            array_push($results, ...$logs);
+            if ($logs) {
+                array_push($results, ...$logs);
+
+                if ($limit > 0 && count($results) >= $limit) {
+                    $results = array_slice($results, 0, $limit);
+
+                    break;
+                }
+            }
         }
 
         fclose($handle);

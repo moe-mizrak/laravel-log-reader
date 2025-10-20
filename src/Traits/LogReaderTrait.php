@@ -143,7 +143,7 @@ trait LogReaderTrait
     protected function executeQuery(Builder $builder, bool $chunk = false): array
     {
         if ($chunk) {
-            $chunkSize = (int) config('laravel-log-reader.db.chunk_size', 500);
+            $chunkSize = config('laravel-log-reader.db.chunk_size', 500);
             $results = [];
 
             $builder->chunk($chunkSize, function ($chunk) use (&$results) {
