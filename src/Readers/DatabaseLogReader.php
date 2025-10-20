@@ -72,8 +72,7 @@ final class DatabaseLogReader implements LogReaderInterface
 
         // Apply search
         if (! empty($this->searchQuery)) {
-            $columns = array_map(fn($col) => $this->getColumn($col), $this->searchableColumns);
-            $builder->whereAny($columns, 'like', '%' . $this->searchQuery . '%');
+            $this->applyLogSearch($builder, $this->searchQuery, $this->searchableColumns);
         }
 
         // Apply filters
@@ -87,7 +86,11 @@ final class DatabaseLogReader implements LogReaderInterface
             };
         }
 
+        // Order by timestamp descending by default
         $builder->orderByDesc($this->getColumn(LogTableColumnType::TIMESTAMP->value));
+
+        // Apply default limit
+        $builder->limit(config('laravel-log-reader.db.limit', 10000));
 
         return $this->executeQuery($builder, $this->chunk);
     }

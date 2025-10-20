@@ -6,6 +6,7 @@ namespace MoeMizrak\LaravelLogReader\Tests\Readers;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use MoeMizrak\LaravelLogReader\Enums\ColumnType;
 use MoeMizrak\LaravelLogReader\Enums\FilterKeyType;
 use MoeMizrak\LaravelLogReader\Enums\LogDriverType;
 use MoeMizrak\LaravelLogReader\Enums\LogTableColumnType;
@@ -45,9 +46,9 @@ final class DatabaseLogReaderTest extends TestCase
                 LogTableColumnType::EXTRA->value => 'extra',
             ],
             'laravel-log-reader.db.searchable_columns' => [
-                LogTableColumnType::MESSAGE->value,
-                LogTableColumnType::CONTEXT->value,
-                LogTableColumnType::EXTRA->value,
+                ['name' => LogTableColumnType::MESSAGE->value, 'type' => ColumnType::TEXT->value],
+                ['name' => LogTableColumnType::CONTEXT->value, 'type' => ColumnType::JSON->value],
+                ['name' => LogTableColumnType::EXTRA->value, 'type' => ColumnType::JSON->value],
             ],
         ]);
 
@@ -581,6 +582,31 @@ final class DatabaseLogReaderTest extends TestCase
         $this->assertSame([], $results);
     }
 
+    #[Test]
+    public function it_ignores_custom_filter_when_column_does_not_exist(): void
+    {
+        /* EXECUTE */
+        $results = $this->databaseLogReader->filter(['non_existing_column' => 'value'])->execute();
+
+        /* ASSERT */
+        $this->assertCount(3, $results);
+    }
+
+    #[Test]
+    public function it_respects_the_configured_limit(): void
+    {
+        // SETUP
+        config(['laravel-log-reader.db.limit' => 2]);
+
+        // EXECUTE
+        $results = $this->databaseLogReader->filter([])->execute();
+
+        // ASSERT
+        $this->assertCount(2, $results);
+        $this->assertSame('Cache cleared', $results[0]->message);
+        $this->assertSame('Payment failed', $results[1]->message);
+    }
+
     /**
      * Create the logs table for testing.
      */
@@ -591,8 +617,8 @@ final class DatabaseLogReaderTest extends TestCase
             level VARCHAR(20),
             message TEXT,
             channel VARCHAR(50),
-            context TEXT,
-            extra TEXT,
+            context JSON,
+            extra JSON,
             created_at DATETIME
         )");
     }
