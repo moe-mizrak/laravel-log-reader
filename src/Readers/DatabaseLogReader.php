@@ -78,10 +78,28 @@ final class DatabaseLogReader implements LogReaderInterface
         // Apply filters
         foreach ($this->filters as $key => $value) {
             match ($key) {
-                FilterKeyType::LEVEL->value => $builder->where($this->getColumn(LogTableColumnType::LEVEL->value), mb_strtolower((string) $value)),
-                FilterKeyType::DATE_FROM->value => $builder->where($this->getColumn(LogTableColumnType::TIMESTAMP->value), '>=', $value),
-                FilterKeyType::DATE_TO->value => $builder->where($this->getColumn(LogTableColumnType::TIMESTAMP->value), '<=', $value),
-                FilterKeyType::CHANNEL->value => $builder->where($this->getColumn(LogTableColumnType::CHANNEL->value), $value),
+                FilterKeyType::LEVEL->value => $builder->whereRaw(
+                    'LOWER(' . $this->getColumn(LogTableColumnType::LEVEL->value) . ') = ?',
+                    [mb_strtolower((string) $value)]
+                ),
+
+                FilterKeyType::CHANNEL->value => $builder->whereRaw(
+                    'LOWER(' . $this->getColumn(LogTableColumnType::CHANNEL->value) . ') = ?',
+                    [mb_strtolower((string) $value)]
+                ),
+
+                FilterKeyType::DATE_FROM->value => $builder->where(
+                    $this->getColumn(LogTableColumnType::TIMESTAMP->value),
+                    '>=',
+                    $value
+                ),
+
+                FilterKeyType::DATE_TO->value => $builder->where(
+                    $this->getColumn(LogTableColumnType::TIMESTAMP->value),
+                    '<=',
+                    $value
+                ),
+
                 default => $this->applyCustomFilter($builder, $key, $value),
             };
         }

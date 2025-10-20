@@ -593,6 +593,32 @@ final class DatabaseLogReaderTest extends TestCase
     }
 
     #[Test]
+    public function it_filters_logs_by_channel_case_insensitively(): void
+    {
+        /* EXECUTE */
+        $firstResult = $this->databaseLogReader->filter([
+            FilterKeyType::CHANNEL->value => 'auth',
+        ])->execute();
+
+        $secondResult = $this->databaseLogReader->filter([
+            FilterKeyType::CHANNEL->value => 'AUTH',
+        ])->execute();
+
+        $thirdResult = $this->databaseLogReader->filter([
+            FilterKeyType::CHANNEL->value => 'AuTh',
+        ])->execute();
+
+        /* ASSERT */
+        $this->assertCount(1, $firstResult);
+        $this->assertCount(1, $secondResult);
+        $this->assertCount(1, $thirdResult);
+
+        $this->assertSame('User logged in', $firstResult[0]->message);
+        $this->assertSame('User logged in', $secondResult[0]->message);
+        $this->assertSame('User logged in', $thirdResult[0]->message);
+    }
+
+    #[Test]
     public function it_respects_the_configured_limit(): void
     {
         // SETUP
