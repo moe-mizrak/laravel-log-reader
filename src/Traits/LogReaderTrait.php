@@ -11,6 +11,7 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use MoeMizrak\LaravelLogReader\Data\LogData;
+use MoeMizrak\LaravelLogReader\Enums\ColumnType;
 use MoeMizrak\LaravelLogReader\Enums\FilterKeyType;
 use MoeMizrak\LaravelLogReader\Enums\LogTableColumnType;
 use Spatie\LaravelData\Optional;
@@ -162,6 +163,47 @@ trait LogReaderTrait
         if ($this->columnExists($column)) {
             $builder->where($column, $value);
         }
+    }
+
+    /**
+     * Build the appropriate search expression based on column type and database driver.
+     */
+    protected function applyLogSearch(Builder $builder, string $searchTerm, array $searchableColumns): Builder
+    {
+        $searchTerm = trim($searchTerm);
+
+        if ($searchTerm === '') {
+            return $builder;
+        }
+
+        $driver = $builder->getConnection()->getDriverName();
+        $table = $builder->from;
+
+        $builder->where(function ($nestedQuery) use ($searchableColumns, $table, $searchTerm, $driver) {
+            foreach ($searchableColumns as $columnConfig) {
+                $columnName = $table . '.' . Arr::get($columnConfig, 'name');
+                $columnType = Arr::get($columnConfig, 'type', ColumnType::TEXT->value);
+                $likePattern = "%{$searchTerm}%";
+
+                if ($columnType === ColumnType::JSON->value) {
+                    if ($driver === 'pgsql') {
+                        $nestedQuery->orWhereRaw("CAST($columnName AS TEXT) ILIKE ?", [$likePattern]);
+                    } elseif ($driver === 'mysql') {
+                        $nestedQuery->orWhereRaw("LOWER(CAST($columnName AS CHAR)) LIKE LOWER(?)", [$likePattern]);
+                    } else {
+                        $nestedQuery->orWhereRaw("CAST($columnName AS TEXT) LIKE ?", [$likePattern]);
+                    }
+                } else { // text
+                    if ($driver === 'pgsql') {
+                        $nestedQuery->orWhereRaw("$columnName ILIKE ?", [$likePattern]);
+                    } else {
+                        $nestedQuery->orWhereRaw("LOWER($columnName) LIKE LOWER(?)", [$likePattern]);
+                    }
+                }
+            }
+        });
+
+        return $builder;
     }
 
     /**

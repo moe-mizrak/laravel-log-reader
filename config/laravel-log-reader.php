@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use MoeMizrak\LaravelLogReader\Enums\ColumnType;
 use MoeMizrak\LaravelLogReader\Enums\LogDriverType;
 use MoeMizrak\LaravelLogReader\Enums\LogTableColumnType;
 
@@ -33,6 +34,7 @@ return [
         'table' => env('LOG_DB_TABLE_NAME', 'logs'),
         'connection' => env('LOG_DB_CONNECTION'),
         'chunk_size' => env('LOG_READER_DB_CHUNK_SIZE', 500), // number of records per chunk when chunking is enabled
+        'limit' => env('LOG_READER_DB_QUERY_LIMIT', 10000), // max number of records to fetch in queries
 
         // Column mapping: maps DB columns to LogData properties
         'columns' => [
@@ -45,11 +47,10 @@ return [
             LogTableColumnType::EXTRA->value => 'extra', // any extra data, often JSON e.g. '{"ip":172.0.0.1, "session_id":"abc", "user_id":123}'
         ],
 
-        // Columns that should be searchable in DB queries
         'searchable_columns' => [
-            LogTableColumnType::MESSAGE->value,
-            LogTableColumnType::CONTEXT->value,
-            LogTableColumnType::EXTRA->value,
+            ['name' => LogTableColumnType::MESSAGE->value, 'type' => ColumnType::TEXT->value],
+            ['name' => LogTableColumnType::CONTEXT->value, 'type' => ColumnType::JSON->value],
+            ['name' => LogTableColumnType::EXTRA->value, 'type' => ColumnType::JSON->value],
         ],
     ],
 ];
