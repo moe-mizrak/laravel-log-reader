@@ -1,7 +1,7 @@
 # Laravel Log Reader
 Lightweight Laravel package for searching and filtering logs from both file and database sources.
 
-> This package serves as the core log reader for the [Laravel MCP Log](https://github.com/laplace-demon-ai/laravel-mcp-log) (**MCP tool for Laravel log analysing with AI.**), providing its main functionality.
+> This package provides the core log reading functionality used by the [Laravel MCP Log](https://github.com/laplace-demon-ai/laravel-mcp-log) (**MCP tool for Laravel log analysing with AI.**).
 
 ## Installation
 You can install the package (that you created with this template) via composer:
